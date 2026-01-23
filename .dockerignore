@@ -1,0 +1,37 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+
+# Django
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+database/
+
+# Docker
+.dockerignore
+docker-compose.yml
+docker-compose.override.yml
+Dockerfile
+*.log
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.bak
+notes.txt
+
+# Other
+*.pem

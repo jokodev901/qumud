@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<nav>
+    {% if user.is_authenticated %}
+    <div>
+        <li><a href="{% url 'home' %}">Home</a></li>
+    </div>
+    {% else %}
+    {% endif %}
+    </div>
+        <ul>
+            {% if user.is_authenticated %}
+                <li>Welcome {{ user.username }}</li>
+                <li>
+                    <a href="{% url 'profile' %}">Profile</a>
+                </li>
+                <li>
+                    <form class='navbutton' action="{% url 'logout' %}" method="post">
+                        {% csrf_token %}
+                        <button type="submit">Logout</button>
+                    </form>
+                </li>
+            {% else %}
+                <li><a href="{% url 'login' %}" role="button">Login</a></li>
+                <li><a href="{% url 'register' %}" role="button">Register</a></li>
+            {% endif %}
+        </ul>
+    </div>
+</nav>
+<div>
+    <h2>User Profile: {{ user.username }}</h2>
+        <form method="post">
+            {% csrf_token %}
+            <h3>API Access</h3>
+            {% if api_key %}
+                <p>Your current API Key:</p>
+                    <code>{{ api_key }}</code>
+                <p><small>Keep this key secret. If you suspect it's leaked, rotate it below.</small></p>
+            {% else %}
+                <p>No API Key has been generated for this account.</p>
+            {% endif %}
+
+            <button type="submit" name="generate_token">
+                {% if api_key %}Rotate API Key{% else %}Generate API Key{% endif %}
+            </button>
+        </form>
+</div>
+</html>

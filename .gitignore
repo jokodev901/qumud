@@ -1,0 +1,8 @@
+/.venv/
+/.idea/
+staticfiles/
+notes.txt
+*.sqlite3
+*.ini
+*.pem
+.env
