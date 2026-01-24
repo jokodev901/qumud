@@ -1,0 +1,18 @@
+body {
+    font-family: "Courier New", Courier, monospace;
+    background-color: black;
+    color: white;
+}
+
+.navbar-custom {
+    border-bottom: 3px solid #333333;
+}
+
+.navbar-custom .nav-link {
+    color: #888888 !important;
+}
+
+.navbar-custom .nav-link:hover,
+.navbar-custom .nav-item.active .nav-link {
+    color: #ffffff !important;
+}

@@ -4,7 +4,6 @@ from django.views.generic.edit import CreateView
 from django.contrib.auth import login
 from django.conf import settings
 
-
 from .forms import CustomUserCreationForm
 
 

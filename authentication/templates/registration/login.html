@@ -1,11 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
-<div>
+{% extends base_template %}
+
+{% block content %}
+<div id="login-container">
     <h2>Log In</h2>
     <form method="post">
         {% csrf_token %}
@@ -13,5 +9,4 @@
         <button type="submit">Sign In</button>
     </form>
 </div>
-</body>
-</html>
+{% endblock %}

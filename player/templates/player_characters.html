@@ -1,0 +1,13 @@
+{% extends base_template %}
+
+{% block content %}
+<div>
+    <h2>Player Characters</h2>
+    <ul>
+        {% for character in characters %}
+        <li>{{ character }}</li>
+        {% endfor %}
+    </ul>
+
+</div>
+{% endblock %}
