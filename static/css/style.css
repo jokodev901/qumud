@@ -16,3 +16,32 @@ body {
 .navbar-custom .nav-item.active .nav-link {
     color: #ffffff !important;
 }
+
+/* Custom Grayscale Button */
+.btn-dark-outline {
+    background-color: #000000;
+    color: #ffffff;
+    border: 2px solid #ffffff; /* The white outline */
+    border-radius: 4px;        /* Keeping it slightly sharp */
+    padding: 0.5rem 1.25rem;
+    transition: all 0.2s ease-in-out;
+}
+
+/* Hover State: Inverse the colors for clear feedback */
+.btn-dark-outline:hover {
+    background-color: #ffffff;
+    color: #000000;
+    border-color: #000000;
+}
+
+/* HTMX "In-Flight" State: Make it look disabled/dimmed while loading */
+.htmx-request.btn-dark-outline {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.form-text {
+    color: #ced4da !important; /* A light "Silver" color (Bootstrap's gray-400) */
+    opacity: 0.8;               /* Makes it slightly dimmer than pure white */
+    font-size: 0.875rem;       /* Keeps it slightly smaller than input text */
+}

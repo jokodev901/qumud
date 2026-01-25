@@ -4,9 +4,7 @@
 <div>
     <h2>Create an Account</h2>
     <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Register</button>
+    {% include "core/form_partial.html" with button_text="Register" %}
     </form>
 </div>
 {% endblock %}

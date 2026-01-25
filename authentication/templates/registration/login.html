@@ -4,9 +4,7 @@
 <div id="login-container">
     <h2>Log In</h2>
     <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Sign In</button>
+    {% include "core/form_partial.html" with button_text="Login" %}
     </form>
 </div>
 {% endblock %}

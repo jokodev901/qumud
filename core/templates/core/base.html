@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,7 +9,6 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <script src="{% static 'js/htmx/htmx.min.js' %}"></script>
     <script src="{% static 'js/bootstrap/bootstrap.bundle.min.js' %}" defer></script>
-
 </head>
 <body>
     <nav class="navbar navbar-expand-sm navbar-dark navbar-custom">
@@ -19,17 +17,36 @@
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
-            <div class="navbar-collapse collapse" id="navbar">
+            <div class="navbar-collapse collapse" id="navbar" hx-boost="true" hx-target="#main-content">
                 <ul class="nav navbar-nav me-auto">
+                    <li class="nav-item"><div>Seconds: <span id="session-timer">0</span></div></li>
+                    <script>
+                        (function() {
+                            let seconds = 0;
+                            const timerElement = document.getElementById('session-timer');
+                            const timerInterval = setInterval(() => {
+                                seconds++;
+                                timerElement.innerText = seconds;
+                            }, 1000);
+                        })();
+                    </script>
                     {% if user.is_authenticated %}
-                        <li class="nav-item"><a class="nav-link" href="{% url 'home' %}">Home</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{% url 'profile' %}">Profile</a></li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'home' %}">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'profile' %}">Profile</a>
+                        </li>
                     {% else %}
-                        <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Login</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{% url 'register' %}">Register</a></li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'login' %}">Login</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'register' %}">Register</a>
+                        </li>
                     {% endif %}
                 </ul> {% if user.is_authenticated %}
-                    <form class="form-inline my-2 my-lg-0" action="{% url 'logout' %}" method="post">
+                    <form class="form-inline my-2 my-lg-0" action="{% url 'logout' %}" method="post" hx-boost="false">
                         {% csrf_token %}
                         <button class="btn btn-link nav-link" type="submit">Logout</button>
                     </form>
@@ -37,8 +54,9 @@
             </div>
         </div>
     </nav>
-    <main id="main-content" class="container">
+    <main id="main-content" role="main" class="container pt-5">
         {% block content %}{% endblock %}
     </main>
 </body>
 </html>
+

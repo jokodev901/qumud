@@ -1,3 +1,5 @@
+import json
+
 from django.views.generic import TemplateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect, render, reverse
@@ -43,11 +45,20 @@ class CreatePlayer(LoginRequiredMixin, View):
             player.save()
 
             if request.headers.get('HX-Request'):
-                response = HttpResponse()
-                response['HX-Redirect'] = reverse('home')
+                response = HttpResponse(status=204)
+                response['HX-Location'] = reverse('home')
+
+                location_data = {
+                    "path": reverse('home'),
+                    "target": "#main-content",
+                    "swap": "innerHTML"
+                }
+
+                response = HttpResponse(status=204)
+                response['HX-Location'] = json.dumps(location_data)
                 return response
 
-            return redirect('quest_list')
+            return redirect('home')
 
         return render(request, self.template_name, {'form': form})
 
@@ -57,7 +68,6 @@ class GetPlayerCharacters(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-
 
         filler_chars = ['Character 1', 'Character 2', 'Character 3', 'Character 4', 'Character 5']
         context['characters'] = filler_chars

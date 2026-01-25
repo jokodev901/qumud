@@ -2,30 +2,14 @@
 
 {% block content %}
 <div id="player-setup-form">
+    <h3>Enter your player alias</h3>
+    <h5>This is what other players will see in-game</h5>
     <form hx-post="{% url 'player' %}"
-          hx-target="#player-setup-form"
-          hx-swap="outerHTML">
+          hx-target="#main-content"
+          class="needs-validation">
 
-        {% csrf_token %}
+          {% include "core/form_partial.html" with button_text="OK" %}
 
-        <div class="form-group">
-            <label for="{{ form.alias.id_for_label }}">Player Alias:</label>
-            {{ form.alias }}
-
-            {% if form.alias.errors %}
-                <div class="error-list">
-                    {% for error in form.alias.errors %}
-                        <span class="error-text">{{ error }}</span>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        </div>
-
-        <div class="form-actions">
-            <button type="submit" class="btn-primary">
-                Confirm Identity
-            </button>
-        </div>
     </form>
 </div>
 {% endblock %}
