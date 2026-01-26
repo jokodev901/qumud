@@ -7,7 +7,8 @@ from django.http import HttpResponse
 
 from rest_framework.authtoken.models import Token
 
-from .forms import PlayerCreationForm
+from world.models import Entity
+from .forms import PlayerCreationForm, CharacterCreationForm
 
 
 class UserProfileView(LoginRequiredMixin, TemplateView):
@@ -38,6 +39,7 @@ class CreatePlayer(LoginRequiredMixin, View):
 
     def post(self, request):
         form = PlayerCreationForm(request.POST)
+
         if form.is_valid():
             player = form.save(commit=False)
             user = request.user
@@ -68,8 +70,49 @@ class GetPlayerCharacters(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        user = self.request.user
+        player = user.player
+        characters = Entity.objects.all().filter(player=player)
 
-        filler_chars = ['Character 1', 'Character 2', 'Character 3', 'Character 4', 'Character 5']
-        context['characters'] = filler_chars
+        clist = [c.name for c in characters]
+        context['characters'] = clist
 
         return context
+
+
+class CreateCharacter(LoginRequiredMixin, View):
+    template_name = 'create_character.html'
+
+    def get(self, request):
+        form = CharacterCreationForm()
+        return render(request, self.template_name, {'form': form})
+
+    def post(self, request):
+        form = CharacterCreationForm(request.POST)
+
+        if form.is_valid():
+            entity = form.save(commit=False)
+            player = request.user.player
+            entity.player = player
+            entity.entity_type = 'P'
+            entity.health = entity.max_health
+
+            entity.save()
+
+            if request.headers.get('HX-Request'):
+                response = HttpResponse(status=204)
+                response['HX-Location'] = reverse('home')
+
+                location_data = {
+                    "path": reverse('home'),
+                    "target": "#main-content",
+                    "swap": "innerHTML"
+                }
+
+                response = HttpResponse(status=204)
+                response['HX-Location'] = json.dumps(location_data)
+                return response
+
+            return redirect('home')
+
+        return render(request, self.template_name, {'form': form})

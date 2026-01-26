@@ -151,6 +151,25 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Auth User settings
 AUTH_USER_MODEL = 'authentication.User'
 
+# Logging settings
+LOGLEVEL = os.environ.get('DJANGO_LOGLEVEL', 'DEBUG')
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': LOGLEVEL,
+            'propagate': False,
+        },
+    },
+}
+
 # Django REST framework settings
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',

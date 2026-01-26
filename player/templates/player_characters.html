@@ -1,13 +1,32 @@
 {% extends base_template %}
 
 {% block content %}
-<div>
+<div id="character-list" hx-boost="true" hx-target="#main-content">
     <h2>Player Characters</h2>
-    <ul>
-        {% for character in characters %}
-        <li>{{ character }}</li>
-        {% endfor %}
-    </ul>
+<!--    <ul>-->
+<!--        {% for character in characters %}-->
+<!--        <li>{{ character }}</li>-->
+<!--        {% endfor %}-->
+<!--    </ul>-->
 
+    <div class="selection-list">
+        {% for character in characters %}
+        <div class="item-container">
+            <input type="radio"
+                   id="character-{{ character.public_id }}"
+                   name="selected_id"
+                   value="{{ character.public_id }}"
+                   class="hidden-radio"
+                   {% if forloop.first %}checked{% endif %}>
+
+            <label for="character-{{ character.public_id }}" class="selectable-card">
+                <span class="display-value">{{ character.name }}</span>
+            </label>
+        </div>
+        {% endfor %}
+    </div>
+
+
+    <a class="btn btn-dark-outline" href="{% url 'create_character' %}">Create Character</a>
 </div>
 {% endblock %}

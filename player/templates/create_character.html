@@ -1,0 +1,14 @@
+{% extends base_template %}
+
+{% block content %}
+<div id="character-create-form">
+    <h3>Character creation</h3>
+    <form hx-post="{% url 'create_character' %}"
+          hx-target="#main-content"
+          class="needs-validation">
+
+          {% include "core/form_partial.html" with button_text="Create" %}
+
+    </form>
+</div>
+{% endblock %}

@@ -12,11 +12,16 @@ class PlayerSetupMiddleware:
             return self.get_response(request)
 
         setup_url = reverse('player')
-        exempt_urls = [setup_url, reverse('logout'), '/admin/']
+        exempt_prefixes = ['/admin/', '/__debug__/']  # Added debug toolbar just in case
+        exempt_urls = [setup_url, reverse('logout')]
+        is_exempt = (
+                request.path in exempt_urls or
+                any(request.path.startswith(prefix) for prefix in exempt_prefixes)
+        )
 
         has_player = hasattr(request.user, 'player')
 
-        if not has_player and request.path not in exempt_urls:
+        if not has_player and not is_exempt:
             return self._handle_redirect(request, setup_url)
 
         if has_player and request.path == setup_url:
