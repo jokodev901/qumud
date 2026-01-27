@@ -1,8 +1,13 @@
 import uuid
-
 from django.db import models
+from authentication.models import User
 
-from player.models import Player
+
+class Player(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    alias = models.CharField('in game alias', max_length=32, unique=True)
+    current_character = models.OneToOneField('Entity', on_delete=models.SET_NULL, null=True, blank=True)
 
 
 class World(models.Model):
@@ -57,7 +62,6 @@ class Event(models.Model):
     last_update = models.DateTimeField(auto_now=True)
     location = models.ForeignKey(Location, on_delete=models.CASCADE)
 
-    # TODO figure out how to handle tracking combat and status entries
     # self.combat_log_buffer = []
     # self.combat_log = []
     # self.status_log = []
@@ -77,7 +81,7 @@ class Entity(models.Model):
     )
 
     public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
-    entity_type = models.CharField(max_length=1, choices=ENTITY_TYPES)
+    entity_type = models.CharField(max_length=1, choices=ENTITY_TYPES, db_index=True)
     name = models.CharField('Name', max_length=32)
     max_health = models.IntegerField(default=1)
     health = models.IntegerField(default=1)
@@ -87,9 +91,10 @@ class Entity(models.Model):
     initiative = models.IntegerField(default=0)
     max_targets = models.IntegerField(default=1)
     position = models.IntegerField(default=None, null=True, db_index=True)
+    level = models.IntegerField(default=1)
 
     target = models.ForeignKey('Entity', null=True, blank=True, on_delete=models.SET_NULL, related_name='targeted_by')
-    player = models.ForeignKey(Player, null=True, blank=True, on_delete=models.CASCADE, related_name='player_characters')
+    player_owner = models.ForeignKey(Player, null=True, blank=True, on_delete=models.CASCADE, related_name='player_characters')
     event = models.ForeignKey(Event, null=True, blank=True, on_delete=models.SET_NULL, related_name='event_entities')
     location = models.ForeignKey(Location, null=True, blank=True, on_delete=models.SET_NULL, related_name='location_entities')
 
