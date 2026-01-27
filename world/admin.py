@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import World, Region, Location, Event, Entity
+from .models import World, Region, Location, Event, Entity, Player
 
 
 # Inlines
@@ -67,12 +67,18 @@ class EntityAdmin(admin.ModelAdmin):
             'fields': (('health', 'max_health'), ('attack_damage', 'attack_range'), 'speed', 'initiative')
         }),
         ('Combat & Location', {
-            'fields': ('position', 'target', 'event', 'location', 'player')
+            'fields': ('position', 'target', 'event', 'location', 'player_owner')
         }),
     )
 
-    list_display = ('name', 'entity_type', 'health', 'location', 'event', 'player')
+    list_display = ('name', 'entity_type', 'health', 'location', 'event', 'player_owner')
     list_filter = ('entity_type', 'location', 'event__active')
-    search_fields = ('name', 'player__alias')  # Assumes Player has an alias field
+    search_fields = ('name', 'player_owner__alias')  # Assumes Player has an alias field
     readonly_fields = ('public_id',)
-    raw_id_fields = ('target', 'player', 'event')  # Better for large datasets than dropdowns
+    raw_id_fields = ('target', 'player_owner', 'event')  # Better for large datasets than dropdowns
+
+
+@admin.register(Player)
+class PlayerAdmin(admin.ModelAdmin):
+    list_display = ('alias', 'public_id')
+    search_fields = ('alias',)

@@ -45,3 +45,38 @@ body {
     opacity: 0.8;               /* Makes it slightly dimmer than pure white */
     font-size: 0.875rem;       /* Keeps it slightly smaller than input text */
 }
+
+/* Hide radio but keep it accessible */
+.custom-radio-radio {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.custom-radio-label {
+    display: inline-block;
+    cursor: pointer;
+    color: #666; /* Muted default color */
+    transition: color 0.2s ease;
+    padding: 4px 0;
+    font-size: 1rem;
+}
+
+/* Hover effect */
+.custom-radio-label:hover {
+    color: #999; /* Darker on hover */
+}
+
+/* Selected state: Brighter color when radio is checked */
+.custom-radio-radio:checked + .custom-radio-label {
+    color: #fff; /* Bright active color */
+    font-weight: 600;
+}
+
+/* Optional: Add a small dot or indicator before the text if needed
+.custom-radio-radio:checked + .custom-radio-label::before {
+    content: "• ";
+    margin-right: 4px;
+}
+*/

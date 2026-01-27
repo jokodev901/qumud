@@ -1,0 +1,25 @@
+{% extends base_template %}
+
+{% block content %}
+<form hx-boost="true" hx-post="{% url 'select_character' %}" hx-target="#main-content">
+    {% csrf_token %}
+    <h2>Player Characters</h2>
+    <fieldset id="character-list" class="mb-3 mt-3">
+            {% for character in characters %}
+            <div class="item-container">
+                <input type="radio"
+                       id="character-{{ character.public_id }}"
+                       name="selected_id"
+                       value="{{ character.public_id }}"
+                       class="custom-radio-radio"
+                       {% if forloop.first %}checked{% endif %}>
+                <label for="character-{{ character.public_id }}" class="custom-radio-label">
+                    <span class="display-value">{{ character.name }}<br>level {{ character.level }}</span>
+                </label>
+            </div>
+            {% endfor %}
+    </fieldset>
+    <a class="btn btn-dark-outline" href="{% url 'create_character' %}">Create New</a>
+    {% if characters %}<button type="submit" class="btn btn-dark-outline">Play</button>{% endif %}
+</form>
+{% endblock %}

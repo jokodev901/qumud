@@ -56,7 +56,6 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'core.apps.CoreConfig',
     'authentication.apps.AuthenticationConfig',
-    'player.apps.PlayerConfig',
     'world.apps.WorldConfig',
 ]
 

@@ -1,6 +1,5 @@
 from django import forms
-from .models import Player
-from world.models import Entity
+from .models import Player, Entity
 
 
 class PlayerCreationForm(forms.ModelForm):
