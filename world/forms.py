@@ -1,5 +1,5 @@
 from django import forms
-from .models import Player, Entity
+from .models import Player, Entity, World
 
 
 class PlayerCreationForm(forms.ModelForm):
@@ -31,4 +31,16 @@ class CharacterCreationForm(forms.ModelForm):
             'speed': forms.NumberInput(attrs={'class': 'form-control'}),
             'initiative': forms.NumberInput(attrs={'class': 'form-control'}),
             'max_targets': forms.NumberInput(attrs={'class': 'form-control'}),
+        }
+
+
+class WorldCreationForm(forms.ModelForm):
+    class Meta:
+        model = World
+        fields = ['name']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter a world name...'}),
+        }
+        labels = {
+            'name': ''
         }
