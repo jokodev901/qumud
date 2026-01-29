@@ -1,0 +1,16 @@
+{% extends base_template %}
+
+{% block content %}
+<h3>You made it to the Map Screen</h3>
+<h1>Region</h1>
+{{ region }}<br>
+
+<h1>Current location</h1>
+{{ current_location }}<br>
+
+<h1>Available locations</h1>
+{% for location in locations %}
+{{ location }}<br>
+{% endfor %}
+
+{% endblock %}

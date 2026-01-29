@@ -8,8 +8,10 @@ from django.db import transaction
 
 from rest_framework.authtoken.models import Token
 
-from world.models import Entity
-from .forms import PlayerCreationForm, CharacterCreationForm
+from core.utils import generators
+from .models import Entity, World, Region, Location
+from .forms import PlayerCreationForm, CharacterCreationForm, WorldCreationForm
+
 
 
 class UserProfileView(LoginRequiredMixin, TemplateView):
@@ -139,11 +141,81 @@ class CreateCharacter(LoginRequiredMixin, View):
 
 
 class SelectWorld(LoginRequiredMixin, View):
-    '''
-    Placeholder
-    '''
-
     template_name = 'world.html'
 
     def get(self, request):
-        return render(request, self.template_name)
+        user = request.user
+        form = WorldCreationForm()
+
+        worldname = None
+        if user.player.current_character and user.player.current_character.location:
+            worldname = user.player.current_character.location.region.world.name
+
+        return render(request, self.template_name, {'world': worldname, 'form': form})
+
+    def post(self, request):
+        form = WorldCreationForm(request.POST)
+
+        if form.is_valid():
+            with transaction.atomic():
+                world_form = form.save(commit=False)
+                world, created = World.objects.get_or_create(
+                    name=world_form.name
+                )
+
+                if created:
+                    # For a new world, create the starting Region and locations
+                    # Starting region
+                    region_data = generators.generate_region(seed=world.name, level=1)
+                    region = Region(name=region_data['name'], biome=region_data['biome'], world=world)
+                    region.save()
+
+                    for town in region_data['locations']['towns']:
+                        t = Location.objects.create(location_type='T', name=town['name'], level=town['level'],
+                                                    region=region)
+                        world.start_location = t
+
+                    for dungeon in region_data['locations']['dungeons']:
+                        Location.objects.create(location_type='D', name=dungeon['name'], level=dungeon['level'],
+                                                region=region)
+
+                    world.save()
+
+                character = request.user.player.current_character
+                character.location = world.start_location
+                character.save()
+
+            if request.headers.get('HX-Request'):
+                response = HttpResponse(status=204)
+                response['HX-Location'] = reverse('map')
+
+                location_data = {
+                    "path": reverse('map'),
+                    "target": "#main-content",
+                    "swap": "innerHTML"
+                }
+
+                response = HttpResponse(status=204)
+                response['HX-Location'] = json.dumps(location_data)
+                return response
+
+        return render(request, self.template_name, {'form': form})
+
+
+class Map(LoginRequiredMixin, TemplateView):
+    template_name = 'map.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        character = user.player.current_character
+        location = character.location
+        region = location.region
+
+        locations = Location.objects.all().filter(region=region).values_list('name', flat=True)
+
+        context['locations'] = locations
+        context['region'] = region.name
+        context['current_location'] = location
+
+        return context

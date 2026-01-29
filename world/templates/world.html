@@ -1,5 +1,24 @@
 {% extends base_template %}
 
 {% block content %}
-<h2>WORLDS</h2>
+
+<h3>World Selection</h3>
+
+{% if world %}
+
+<a class="btn btn-dark-outline mb-3"
+   hx-boost="true"
+   hx-target="#main-content"
+   href="{% url 'map' %}">Continue to {{ world }}</a>
+
+{% endif %}
+
+<div id="world-create-form">
+    <form hx-post="{% url 'world' %}"
+          hx-target="#main-content"
+          class="needs-validation">
+          {% include "core/form_partial.html" with button_text="Join new world" %}
+    </form>
+</div>
+
 {% endblock %}
