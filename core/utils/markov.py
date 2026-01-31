@@ -200,12 +200,20 @@ class MarkovNameGenerator:
 if __name__ == "__main__":
     from corpus import CORPUS
 
+    corp = CORPUS['biomes']['M']['regions']
     corp = CORPUS['towns']
-    seed = 'dvw4fg23f'
-    count = 25
+    seed = 'aefaefa'
+    count = 10
 
     gen = MarkovNameGenerator(order=3, seed=seed, normalize_case=True)
     gen.fit(corp)
-    values = gen.generate_many(k=count, max_len=32, min_len=6, avoid_training=True)
-    for v in values:
-        print(v.title())
+    values = gen.generate_many(k=count, max_len=24, min_len=6, avoid_training=True)
+
+    for val in values:
+        words = val.split()
+
+        # If there's more than one word and the last one is short, trim it
+        if len(words) > 1 and len(words[-1]) < 4:
+            words.pop()
+
+        print(" ".join(words).title())

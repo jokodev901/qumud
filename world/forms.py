@@ -1,22 +1,5 @@
 from django import forms
-from .models import Player, Entity, World
-
-
-class PlayerCreationForm(forms.ModelForm):
-    class Meta:
-        model = Player
-        fields = ['alias']
-        labels = {
-            'alias': ''
-        }
-        widgets = {
-            'alias': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter alias...'}),
-        }
-        error_messages = {
-            'alias': {
-                'unique': "A player with this in game alias already exists.",
-            }
-        }
+from .models import Entity, World
 
 
 class CharacterCreationForm(forms.ModelForm):
@@ -24,7 +7,7 @@ class CharacterCreationForm(forms.ModelForm):
         model = Entity
         fields = ['name', 'max_health', 'attack_range', 'attack_damage', 'speed', 'initiative', 'max_targets']
         widgets = {
-            'alias': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter alias...'}),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter character name...'}),
             'max_health': forms.NumberInput(attrs={'class': 'form-control'}),
             'attack_range': forms.NumberInput(attrs={'class': 'form-control'}),
             'attack_damage': forms.NumberInput(attrs={'class': 'form-control'}),
@@ -35,12 +18,19 @@ class CharacterCreationForm(forms.ModelForm):
 
 
 class WorldCreationForm(forms.ModelForm):
+    name = forms.CharField(max_length=64, label='',
+                           widget=forms.TextInput(attrs={'class': 'form-control',
+                                                         'placeholder': 'Enter a world name...'}))
+
     class Meta:
         model = World
         fields = ['name']
-        widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter a world name...'}),
-        }
-        labels = {
-            'name': ''
-        }
+
+    def validate_unique(self):
+        # We override the unique validation and tell it to ignore 'name' since we're handling via get_or_create()
+        exclude = self._get_validation_exclusions()
+        exclude.add('name')
+        try:
+            self.instance.validate_unique(exclude=exclude)
+        except Exception:
+            pass
