@@ -4,16 +4,10 @@ from django.db import models
 from authentication.models import User
 
 
-class Player(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    alias = models.CharField('in game alias', max_length=32, unique=True)
-    current_character = models.OneToOneField('Entity', on_delete=models.SET_NULL, null=True, blank=True)
-
-
 class World(models.Model):
     public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     name = models.CharField('name', max_length=64, unique=True, db_index=True)
+
     start_location = models.ForeignKey('Location', on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
@@ -64,8 +58,10 @@ class Event(models.Model):
     size = models.IntegerField(null=False, default=10)
     active = models.BooleanField(default=True)
     last_update = models.DateTimeField(auto_now=True)
-    location = models.ForeignKey(Location, on_delete=models.CASCADE)
     level = models.IntegerField('level', null=False, blank=False, default=1)
+
+    location = models.ForeignKey(Location, on_delete=models.CASCADE)
+
 
     # self.combat_log_buffer = []
     # self.combat_log = []
@@ -99,9 +95,13 @@ class Entity(models.Model):
     level = models.IntegerField(default=1)
 
     target = models.ForeignKey('Entity', null=True, blank=True, on_delete=models.SET_NULL, related_name='targeted_by')
-    player_owner = models.ForeignKey(Player, null=True, blank=True, on_delete=models.CASCADE, related_name='player_characters')
+    owner = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='user_characters')
+    active = models.OneToOneField(User, null=True, blank=True, on_delete=models.CASCADE)
     event = models.ForeignKey(Event, null=True, blank=True, on_delete=models.SET_NULL, related_name='event_entities')
     location = models.ForeignKey(Location, null=True, blank=True, on_delete=models.SET_NULL, related_name='location_entities')
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        verbose_name_plural = 'entities'

@@ -9,9 +9,9 @@ from django.db import transaction
 from rest_framework.authtoken.models import Token
 
 from core.utils import generators
+from authentication.models import User
 from .models import Entity, World, Region, Location
-from .forms import PlayerCreationForm, CharacterCreationForm, WorldCreationForm
-
+from .forms import CharacterCreationForm, WorldCreationForm
 
 
 class UserProfileView(LoginRequiredMixin, TemplateView):
@@ -33,47 +33,26 @@ class UserProfileView(LoginRequiredMixin, TemplateView):
         return redirect('profile')
 
 
-class CreatePlayer(LoginRequiredMixin, View):
-    template_name = 'player.html'
-
-    def get(self, request):
-        form = PlayerCreationForm()
-        return render(request, self.template_name, {'form': form})
-
-    def post(self, request):
-        form = PlayerCreationForm(request.POST)
-
-        if form.is_valid():
-            player = form.save(commit=False)
-            user = request.user
-            player.user = user
-            player.save()
-
-            if request.headers.get('HX-Request'):
-                location_data = {
-                    "path": reverse('home'),
-                    "target": "#main-content",
-                    "swap": "innerHTML"
-                }
-
-                response = HttpResponse(status=204)
-                response['HX-Location'] = json.dumps(location_data)
-                return response
-
-            return redirect('home')
-
-        return render(request, self.template_name, {'form': form})
-
-
 class SelectCharacter(LoginRequiredMixin, View):
     def post(self, request):
         selected = request.POST.get('selected_id')
-        character = Entity.objects.all().filter(public_id=selected).first()
+        character = Entity.objects.get(public_id=selected)
+
+        user = self.request.user
         if character:
-            player = request.user.player
-            if character.player_owner == player:
-                player.current_character = character
-                player.save()
+            if character.owner == user:
+                with transaction.atomic():
+                    try:
+                        current_entity = Entity.objects.get(active=user)
+                    except Entity.DoesNotExist:
+                        current_entity = None
+
+                    if current_entity:
+                        current_entity.active = None
+                        current_entity.save()
+
+                    character.active = user
+                    character.save()
 
                 if request.headers.get('HX-Request'):
                     location_data = {
@@ -93,10 +72,7 @@ class GetPlayerCharacters(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        user = self.request.user
-        player = user.player
-        characters = Entity.objects.all().filter(player_owner=player)
-
+        characters = Entity.objects.filter(owner=self.request.user)
         context['characters'] = characters
 
         return context
@@ -114,8 +90,7 @@ class CreateCharacter(LoginRequiredMixin, View):
 
         if form.is_valid():
             entity = form.save(commit=False)
-            player = request.user.player
-            entity.player_owner = player
+            entity.owner = self.request.user
             entity.entity_type = 'P'
             entity.health = entity.max_health
 
@@ -144,14 +119,20 @@ class SelectWorld(LoginRequiredMixin, View):
     template_name = 'world.html'
 
     def get(self, request):
-        user = request.user
+        # Start from the User, but join the entire chain up to the World name
+        user = (
+            User.objects
+            .select_related('entity__location__region__world')
+            .get(id=request.user.id)
+        )
+
         form = WorldCreationForm()
+        world_name = None
 
-        worldname = None
-        if user.player.current_character and user.player.current_character.location:
-            worldname = user.player.current_character.location.region.world.name
+        if user.entity and user.entity.location:
+            world_name =user.entity.location.region.world.name
 
-        return render(request, self.template_name, {'world': worldname, 'form': form})
+        return render(request, self.template_name, {'world': world_name, 'form': form})
 
     def post(self, request):
         form = WorldCreationForm(request.POST)
@@ -181,7 +162,7 @@ class SelectWorld(LoginRequiredMixin, View):
 
                     world.save()
 
-                character = request.user.player.current_character
+                character = request.user.entity
                 character.location = world.start_location
                 character.save()
 
@@ -208,7 +189,7 @@ class Map(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
-        character = user.player.current_character
+        character = user.entity
         location = character.location
         region = location.region
 

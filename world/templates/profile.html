@@ -3,7 +3,7 @@
 {% block content %}
 <div>
     <h2>Username: {{ user.username }}</h2>
-    <h2>Player alias: {{ user.player.alias }}</h2>
+    <h2>Player alias: {{ user.alias }}</h2>
         <form method="post">
             {% csrf_token %}
             <h3>API Access</h3>

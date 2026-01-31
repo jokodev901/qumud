@@ -1,11 +1,10 @@
 from django.urls import path
-from .views import (UserProfileView, GetPlayerCharacters, CreatePlayer, CreateCharacter, SelectCharacter, SelectWorld,
+from .views import (UserProfileView, GetPlayerCharacters, CreateCharacter, SelectCharacter, SelectWorld,
                     Map)
 
 
 urlpatterns = [
     path('', GetPlayerCharacters.as_view(), name='home'),
-    path('player', CreatePlayer.as_view(), name='player'),
     path('world', SelectWorld.as_view(), name='world'),
     path('map', Map.as_view(), name='map'),
     path('profile', UserProfileView.as_view(), name='profile'),
