@@ -36,7 +36,7 @@ class UserProfileView(LoginRequiredMixin, TemplateView):
 class SelectCharacter(LoginRequiredMixin, View):
     def post(self, request):
         selected = request.POST.get('selected_id')
-        character = Entity.objects.get(public_id=selected)
+        character = Entity.objects.select_related('owner').only('owner__id').get(public_id=selected)
 
         user = self.request.user
         if character:
@@ -49,10 +49,10 @@ class SelectCharacter(LoginRequiredMixin, View):
 
                     if current_entity:
                         current_entity.active = None
-                        current_entity.save()
+                        current_entity.save(update_fields=['active'])
 
                     character.active = user
-                    character.save()
+                    character.save(update_fields=['active'])
 
                 if request.headers.get('HX-Request'):
                     location_data = {
@@ -72,7 +72,7 @@ class GetPlayerCharacters(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        characters = Entity.objects.filter(owner=self.request.user)
+        characters = Entity.objects.filter(owner=self.request.user).order_by('id')
         context['characters'] = characters
 
         return context
@@ -119,7 +119,6 @@ class SelectWorld(LoginRequiredMixin, View):
     template_name = 'world.html'
 
     def get(self, request):
-        # Start from the User, but join the entire chain up to the World name
         user = (
             User.objects
             .select_related('entity__location__region__world')
@@ -130,7 +129,7 @@ class SelectWorld(LoginRequiredMixin, View):
         world_name = None
 
         if user.entity and user.entity.location:
-            world_name =user.entity.location.region.world.name
+            world_name = user.entity.location.region.world.name
 
         return render(request, self.template_name, {'world': world_name, 'form': form})
 
@@ -164,7 +163,7 @@ class SelectWorld(LoginRequiredMixin, View):
 
                 character = request.user.entity
                 character.location = world.start_location
-                character.save()
+                character.save(update_fields=['location'])
 
             if request.headers.get('HX-Request'):
                 response = HttpResponse(status=204)

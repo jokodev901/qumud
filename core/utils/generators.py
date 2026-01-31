@@ -10,9 +10,13 @@ def generate_town(seed: str, level: int) -> dict:
 
     gen = MarkovNameGenerator(order=3, seed=seed, normalize_case=True)
     gen.fit(CORPUS['towns'])
-    name = gen.generate(max_len=32, min_len=6, avoid_training=True)
-    name = name.strip().title()
+    name = gen.generate(max_len=24, min_len=6, avoid_training=True)
+    words = name.split()
 
+    if len(words) > 1 and len(words[-1]) < 4:
+        words.pop()
+
+    name = " ".join(words).title()
     town_dict = {'name': name, 'level': level}
 
     return town_dict
@@ -27,10 +31,15 @@ def generate_dungeons(seed: str, level: int, count: int) -> list[dict]:
 
     gen = MarkovNameGenerator(order=3, seed=seed, normalize_case=True)
     gen.fit(CORPUS['dungeons'])
-    names = gen.generate_many(k=count, max_len=32, min_len=6, avoid_training=True)
+    names = gen.generate_many(k=count, max_len=24, min_len=6, avoid_training=True)
 
     for name in names:
-        dungeons.append({'name': name.strip().title(), 'level': levels.pop()})
+        words = name.split()
+
+        if len(words) > 1 and len(words[-1]) < 4:
+            words.pop()
+
+        dungeons.append({'name': " ".join(words).title(), 'level': levels.pop()})
 
     return dungeons
 
@@ -42,8 +51,13 @@ def generate_region(seed: str, level: int) -> dict:
 
     gen = MarkovNameGenerator(order=3, seed=seed, normalize_case=True)
     gen.fit(CORPUS['biomes'][biome]['regions'])
-    name = gen.generate(max_len=32, min_len=6, avoid_training=True)
-    name = name.strip().title()
+    name = gen.generate(max_len=24, min_len=6, avoid_training=True)
+    words = name.split()
+
+    if len(words) > 1 and len(words[-1]) < 4:
+        words.pop()
+
+    name = " ".join(words).title()
 
     locations = {}
     town = generate_town(seed=seed, level=level)
