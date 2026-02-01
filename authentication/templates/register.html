@@ -4,7 +4,8 @@
 <div>
     <h2>Create an Account</h2>
     <form method="post">
-    {% include "core/form_partial.html" with button_text="Register" %}
+        {% csrf_token %}
+        {% include "core/form_partial.html" with button_text="Register" %}
     </form>
 </div>
 {% endblock %}

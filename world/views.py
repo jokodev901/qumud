@@ -1,4 +1,5 @@
 import json
+import time
 
 from django.views.generic import TemplateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -97,9 +98,6 @@ class CreateCharacter(LoginRequiredMixin, View):
             entity.save()
 
             if request.headers.get('HX-Request'):
-                response = HttpResponse(status=204)
-                response['HX-Location'] = reverse('home')
-
                 location_data = {
                     "path": reverse('home'),
                     "target": "#main-content",
@@ -119,19 +117,23 @@ class SelectWorld(LoginRequiredMixin, View):
     template_name = 'world.html'
 
     def get(self, request):
-        user = (
-            User.objects
-            .select_related('entity__location__region__world')
-            .get(id=request.user.id)
-        )
+        try:
+            user = (
+                User.objects
+                .select_related('entity__location__region__world')
+                .get(id=request.user.id)
+            )
 
-        form = WorldCreationForm()
-        world_name = None
+            form = WorldCreationForm()
+            world_name = None
 
-        if user.entity and user.entity.location:
-            world_name = user.entity.location.region.world.name
+            if user.entity and user.entity.location:
+                world_name = user.entity.location.region.world.name
 
-        return render(request, self.template_name, {'world': world_name, 'form': form})
+            return render(request, self.template_name, {'world': world_name, 'form': form})
+
+        except Exception:
+            return redirect('home')
 
     def post(self, request):
         form = WorldCreationForm(request.POST)
@@ -145,7 +147,6 @@ class SelectWorld(LoginRequiredMixin, View):
 
                 if created:
                     # For a new world, create the starting Region and locations
-                    # Starting region
                     region_data = generators.generate_region(seed=world.name, level=1)
                     region = Region(name=region_data['name'], biome=region_data['biome'], world=world)
                     region.save()
@@ -167,7 +168,6 @@ class SelectWorld(LoginRequiredMixin, View):
 
             if request.headers.get('HX-Request'):
                 response = HttpResponse(status=204)
-                response['HX-Location'] = reverse('map')
 
                 location_data = {
                     "path": reverse('map'),
@@ -175,27 +175,74 @@ class SelectWorld(LoginRequiredMixin, View):
                     "swap": "innerHTML"
                 }
 
-                response = HttpResponse(status=204)
                 response['HX-Location'] = json.dumps(location_data)
                 return response
 
         return render(request, self.template_name, {'form': form})
 
 
-class Map(LoginRequiredMixin, TemplateView):
+class Map(LoginRequiredMixin, View):
     template_name = 'map.html'
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        user = self.request.user
-        character = user.entity
-        location = character.location
-        region = location.region
+    def get(self, request):
+        try:
+            context = {}
+            player_char = (Entity.objects.select_related('location__region')
+                           .only('location', 'location__region')
+                           .get(active=self.request.user))
 
-        locations = Location.objects.all().filter(region=region).values_list('name', flat=True)
+            current_location = player_char.location
+            region = current_location.region
 
-        context['locations'] = locations
-        context['region'] = region.name
-        context['current_location'] = location
+            locations = Location.objects.all().filter(region=region).order_by('level', 'id')
+            towns = [location for location in locations if location.location_type == 'T']
+            dungeons = [location for location in locations if location.location_type == 'D']
 
-        return context
+            context['towns'] = towns
+            context['dungeons'] = dungeons
+            context['region'] = region
+            context['current_location'] = current_location
+
+            return render(request, self.template_name, context)
+
+        except SyntaxError:
+            return redirect('home')
+
+
+class Travel(LoginRequiredMixin, View):
+    def post(self, request):
+        selected_location = (Location.objects.select_related('region')
+                             .only('region', 'last_event')
+                             .get(public_id=request.POST['public_id']))
+
+        player_char = (Entity.objects.select_related('location__region')
+                       .only('location', 'location__region')
+                       .get(active=self.request.user))
+
+        if selected_location != player_char.location:
+            if selected_location.region == player_char.location.region:
+                with transaction.atomic():
+                    if not selected_location.last_event:
+                        selected_location.last_event = time.time()
+                        selected_location.save(update_fields=['last_event'])
+
+                    player_char.location = selected_location
+                    player_char.save(update_fields=['location'])
+
+                if request.headers.get('HX-Request'):
+                    response = HttpResponse(status=204)
+
+                    location_data = {
+                        "path": reverse('map'),
+                        "target": "#main-content",
+                        "swap": "innerHTML"
+                    }
+
+                    response['HX-Location'] = json.dumps(location_data)
+                    return response
+
+                redirect(reverse('map'))
+
+            return HttpResponse('Invalid selection', status=400)
+
+        return HttpResponse(status=204)

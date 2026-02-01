@@ -10,7 +10,7 @@
     <script src="{% static 'js/htmx/htmx.min.js' %}"></script>
     <script src="{% static 'js/bootstrap/bootstrap.bundle.min.js' %}" defer></script>
 </head>
-<body>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
     <nav class="navbar navbar-expand-sm navbar-dark navbar-custom">
         <div class="container">
         <a class="navbar-brand" href="#">QuMUD</a>

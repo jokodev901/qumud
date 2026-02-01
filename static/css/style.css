@@ -73,10 +73,3 @@ body {
     color: #fff; /* Bright active color */
     font-weight: 600;
 }
-
-/* Optional: Add a small dot or indicator before the text if needed
-.custom-radio-radio:checked + .custom-radio-label::before {
-    content: "• ";
-    margin-right: 4px;
-}
-*/

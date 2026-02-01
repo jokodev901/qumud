@@ -7,9 +7,9 @@
 {% if world %}
 
 <a class="btn btn-dark-outline mb-3"
-   hx-boost="true"
    hx-target="#main-content"
-   href="{% url 'map' %}">Continue to {{ world }}</a>
+   hx-get="{% url 'map' %}"
+   hx-push-url="true">Continue to {{ world }}</a>
 
 {% endif %}
 

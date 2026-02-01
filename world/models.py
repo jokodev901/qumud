@@ -45,6 +45,7 @@ class Location(models.Model):
     name = models.CharField('Location name', max_length=64)
     location_type = models.CharField('Location type', max_length=1, choices=LOCATION_TYPES)
     level = models.IntegerField('level', null=False, blank=False, default=1)
+    last_event = models.FloatField(null=True, blank=True)
 
     region = models.ForeignKey(Region, on_delete=models.CASCADE)
 

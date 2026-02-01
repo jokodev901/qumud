@@ -1,16 +1,41 @@
 {% extends base_template %}
 
 {% block content %}
-<h3>You made it to the Map Screen</h3>
-<h1>Region</h1>
-{{ region }}<br>
-
-<h1>Current location</h1>
-{{ current_location }}<br>
-
-<h1>Available locations</h1>
-{% for location in locations %}
-{{ location }}<br>
-{% endfor %}
-
+<div id="map-container">
+    <div id="region-container">
+        <h1>Region: {{ region }} ({{ region.get_biome_display }})</h1>
+    </div>
+    <div id="location-container" hx-target="#main-content">
+        <h1>Current location: {{ current_location }}</h1>
+        <h1>Travel:</h1>
+        {% for town in towns %}
+            {% if current_location != town %}
+                <h1>Towns</h1>
+                <div class="col-sm-6">
+                    <div class="row">
+                        <a class="btn btn-dark-outline"
+                           hx-post="{% url 'travel' %}"
+                           hx-vals='{"public_id": "{{ town.public_id }}"}'>
+                           {{ town.name }}
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+            <h1>Dungeons</h1>
+        <div class="col-sm-6">
+            {% for dungeon in dungeons %}
+                {% if current_location != dungeon %}
+                <div class="row">
+                    <a class="btn btn-dark-outline"
+                       hx-post="{% url 'travel' %}"
+                       hx-vals='{"public_id": "{{ dungeon.public_id }}"}'>
+                       {{ dungeon.name }} (lvl {{ dungeon.level }})
+                    </a>
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
 {% endblock %}
