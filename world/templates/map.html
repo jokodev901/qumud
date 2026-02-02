@@ -1,41 +1,85 @@
 {% extends base_template %}
 
 {% block content %}
-<div id="map-container">
-    <div id="region-container">
-        <h1>Region: {{ region }} ({{ region.get_biome_display }})</h1>
-    </div>
-    <div id="location-container" hx-target="#main-content">
-        <h1>Current location: {{ current_location }}</h1>
-        <h1>Travel:</h1>
-        {% for town in towns %}
-            {% if current_location != town %}
-                <h1>Towns</h1>
-                <div class="col-sm-6">
-                    <div class="row">
-                        <a class="btn btn-dark-outline"
-                           hx-post="{% url 'travel' %}"
-                           hx-vals='{"public_id": "{{ town.public_id }}"}'>
-                           {{ town.name }}
-                        </a>
+<div class="container">
+    <div class="row g-3">
+        <div class="col-lg-8 col-md-7">
+            <div id="event-card" class="card mb-3" hx-target="#event-card-body">
+                <div class="card-header d-flex justify-content-between">
+                    <span>Event</span>
+                </div>
+                <div id="event-card-body" class="card-body">
+                    {% include "partials/event.html" %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-5">
+            <div id="status-card" class="card mb-3" hx-target="#status-card-body">
+                <div class="card-header">Status</div>
+                <div id="status-card-body" class="card-body">
+                    {% include "partials/status.html" %}
+                </div>
+            </div>
+
+            <div id="travel-card" class="card" hx-target="#travel-card-body">
+                <div class="card-header">Travel</div>
+                    <div id="travel-card-body" class="card-body">
+                        {% include "partials/travel.html" %}
                     </div>
+            </div>
+        </div>
+    </div>
+    <div class="row g-3">
+        <div class="col-lg-8 col-md-7">
+            <div id="region-chat-card" class="card"
+                 hx-target="#region-chat-card-body"
+                 hx-swap="innerHTML scroll:bottom">
+                <div class="card-header">Region Chat</div>
+                <div id="region-chat-card-body" class="card-body p-0">
+                    {% include "partials/region_chat.html" %}
                 </div>
-            {% endif %}
-        {% endfor %}
-            <h1>Dungeons</h1>
-        <div class="col-sm-6">
-            {% for dungeon in dungeons %}
-                {% if current_location != dungeon %}
-                <div class="row">
-                    <a class="btn btn-dark-outline"
-                       hx-post="{% url 'travel' %}"
-                       hx-vals='{"public_id": "{{ dungeon.public_id }}"}'>
-                       {{ dungeon.name }} (lvl {{ dungeon.level }})
-                    </a>
-                </div>
-                {% endif %}
-            {% endfor %}
+            </div>
         </div>
     </div>
 </div>
+<script>
+    function moveSprites() {
+        const sprites = document.querySelectorAll('.sprite');
+
+        sprites.forEach((sprite) => {
+            // Only move if the sprite is NOT defeated
+            if (!sprite.classList.contains('defeat-animate')) {
+                const randomTop = Math.floor(Math.random() * 60) + 20;
+                const randomLeft = Math.floor(Math.random() * 60) + 20;
+
+                sprite.style.top = `${randomTop}%`;
+                sprite.style.left = `${randomLeft}%`;
+            }
+        });
+    }
+
+    // Start the movement
+    const movementInterval = setInterval(moveSprites, 2000);
+
+    // TEST 1: Defeat the first sprite after 6 seconds
+    setTimeout(() => {
+        const sprites = document.querySelectorAll('.sprite');
+        if (sprites[0]) {
+            console.log("Defeating Sprite 1...");
+            sprites[0].classList.add('defeat-animate');
+        }
+    }, 6000);
+
+    // TEST 2: Defeat the second sprite after 12 seconds
+    setTimeout(() => {
+        const sprites = document.querySelectorAll('.sprite');
+        if (sprites[1]) {
+            console.log("Defeating Sprite 2...");
+            sprites[1].classList.add('defeat-animate');
+        }
+        // Optional: Clean up the interval once everyone is dead
+        // clearInterval(movementInterval);
+    }, 12000);
+</script>
 {% endblock %}
