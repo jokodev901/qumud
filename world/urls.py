@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (UserProfileView, GetPlayerCharacters, CreateCharacter, SelectCharacter, SelectWorld,
-                    Map, Travel)
+                    Map, Travel, RegionChat)
 
 
 urlpatterns = [
@@ -11,4 +11,5 @@ urlpatterns = [
     path('create_character', CreateCharacter.as_view(), name='create_character'),
     path('select_character', SelectCharacter.as_view(), name='select_character'),
     path('travel', Travel.as_view(), name='travel'),
+    path('region_chat', RegionChat.as_view(), name='region_chat'),
 ]

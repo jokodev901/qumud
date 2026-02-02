@@ -1,17 +1,21 @@
 import json
 import time
 
+from datetime import timedelta
+
 from django.views.generic import TemplateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect, render, reverse
 from django.http import HttpResponse
 from django.db import transaction
+from django.utils import timezone
+from django.utils.html import escape
 
 from rest_framework.authtoken.models import Token
 
 from core.utils import generators
 from authentication.models import User
-from .models import Entity, World, Region, Location
+from .models import Entity, World, Region, Location, RegionChatMessage
 from .forms import CharacterCreationForm, WorldCreationForm
 
 
@@ -183,34 +187,41 @@ class SelectWorld(LoginRequiredMixin, View):
 
 class Map(LoginRequiredMixin, View):
     template_name = 'map.html'
+    context = {}
+
+    def set_location_data(self, player_char):
+        current_location = player_char.location
+        region = current_location.region
+
+        locations = Location.objects.all().filter(region=region).order_by('level', 'id')
+        towns = [location for location in locations if location.location_type == 'T']
+        dungeons = [location for location in locations if location.location_type == 'D']
+
+        self.context['towns'] = towns
+        self.context['dungeons'] = dungeons
+        self.context['region'] = region
+        self.context['current_location'] = current_location
 
     def get(self, request):
         try:
-            context = {}
             player_char = (Entity.objects.select_related('location__region')
                            .only('location', 'location__region')
                            .get(active=self.request.user))
 
-            current_location = player_char.location
-            region = current_location.region
+            self.set_location_data(player_char)
 
-            locations = Location.objects.all().filter(region=region).order_by('level', 'id')
-            towns = [location for location in locations if location.location_type == 'T']
-            dungeons = [location for location in locations if location.location_type == 'D']
-
-            context['towns'] = towns
-            context['dungeons'] = dungeons
-            context['region'] = region
-            context['current_location'] = current_location
-
-            return render(request, self.template_name, context)
+            return render(request, self.template_name, self.context)
 
         except SyntaxError:
             return redirect('home')
 
 
 class Travel(LoginRequiredMixin, View):
+    template = 'partials/travel.html'
+
     def post(self, request):
+        context = {}
+
         selected_location = (Location.objects.select_related('region')
                              .only('region', 'last_event')
                              .get(public_id=request.POST['public_id']))
@@ -229,20 +240,63 @@ class Travel(LoginRequiredMixin, View):
                     player_char.location = selected_location
                     player_char.save(update_fields=['location'])
 
-                if request.headers.get('HX-Request'):
-                    response = HttpResponse(status=204)
+                locations = Location.objects.all().filter(region=selected_location.region).order_by('level', 'id')
+                towns = [location for location in locations if location.location_type == 'T']
+                dungeons = [location for location in locations if location.location_type == 'D']
 
-                    location_data = {
-                        "path": reverse('map'),
-                        "target": "#main-content",
-                        "swap": "innerHTML"
-                    }
+                context['towns'] = towns
+                context['dungeons'] = dungeons
+                context['region'] = selected_location.region
+                context['current_location'] = selected_location
 
-                    response['HX-Location'] = json.dumps(location_data)
-                    return response
-
-                redirect(reverse('map'))
+                return render(request, self.template, context)
 
             return HttpResponse('Invalid selection', status=400)
 
         return HttpResponse(status=204)
+
+
+class RegionChat(View):
+    template = 'partials/region_chat.html'
+    context = {}
+
+    def prep_user(self):
+        user = (
+            User.objects
+            .select_related('entity__location__region')
+            .get(id=self.request.user.id)
+        )
+
+        return user
+
+    def get(self, request):
+        """
+        get a list of chat messages
+        get list of players
+
+        """
+        if not self.request.user.is_authenticated:
+            return redirect('login')
+
+
+        placeholder_msgs = ['Hello', 'Another one', 'This is also a chat message']
+        self.context['messages'] = placeholder_msgs
+
+        return render(request, self.template, self.context)
+
+    def post(self, request):
+        if not self.request.user.is_authenticated:
+            return redirect('login')
+
+        msg = request.POST.get('region-chat-msg', '').strip()
+        msg_cleaned = escape(msg)
+
+        user = self.prep_user()
+        region = user.entity.location.region
+
+        RegionChatMessage.objects.create(message=msg_cleaned, user=user, region=region)
+        messages = RegionChatMessage.objects.all().select_related('user').filter(region=region, sent_at__gte=timezone.now() - timedelta(hours=1)).order_by('-sent_at')
+
+        self.context['messages'] = messages
+
+        return render(request, self.template, self.context)

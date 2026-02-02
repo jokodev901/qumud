@@ -1,6 +1,7 @@
 import uuid
 
 from django.db import models
+from django.utils import timezone
 from authentication.models import User
 
 
@@ -106,3 +107,11 @@ class Entity(models.Model):
 
     class Meta:
         verbose_name_plural = 'entities'
+
+
+class RegionChatMessage(models.Model):
+    sent_at = models.DateTimeField(default=timezone.now)
+    message = models.TextField()
+
+    region = models.ForeignKey(Region, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)

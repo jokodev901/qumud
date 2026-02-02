@@ -1,4 +1,5 @@
 django
 djangorestframework
 gunicorn
-psycopg2-binary
+psycopg
+psycopg[c]

@@ -13,7 +13,7 @@
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
     <nav class="navbar navbar-expand-sm navbar-dark navbar-custom">
         <div class="container">
-        <a class="navbar-brand" href="#">QuMUD</a>
+        <span class="navbar-brand">QuMUD</span>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -32,10 +32,16 @@
                     </script>
                     {% if user.is_authenticated %}
                         <li class="nav-item">
+                            <a class="nav-link" href="{% url 'profile' %}">Profile</a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="{% url 'home' %}">Characters</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'profile' %}">Profile</a>
+                            <a class="nav-link" href="{% url 'world' %}">World</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'map' %}">Map</a>
                         </li>
                     {% else %}
                         <li class="nav-item">
@@ -54,7 +60,7 @@
             </div>
         </div>
     </nav>
-    <main id="main-content" role="main" class="container pt-5">
+    <main id="main-content" role="main" class="container py-3">
         {% block content %}{% endblock %}
     </main>
 </body>

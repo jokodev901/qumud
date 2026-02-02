@@ -4,6 +4,14 @@ body {
     color: white;
 }
 
+/* Text font override */
+.text-info { font-family: "Courier New", Courier, monospace !important; }
+.text-success { font-family: "Courier New", Courier, monospace !important; }
+.text-light { font-family: "Courier New", Courier, monospace !important; }
+.text-danger { font-family: "Courier New", Courier, monospace !important; }
+.text-shadow { text-shadow: 2px 2px 2px #000; }
+
+/* Navbar */
 .navbar-custom {
     border-bottom: 3px solid #333333;
 }
@@ -17,21 +25,73 @@ body {
     color: #ffffff !important;
 }
 
+/* Cards */
+.card {
+    background-color: #000;
+    color: #fff;
+    border: 1px solid #333;
+}
+
+.card-header {
+    border-bottom: 1px solid #333;
+    background-color: #111 !important;
+    color: #fff;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Chat and Log Windows */
+.scroll-window {
+    height: 250px;
+    overflow-y: auto;
+    background-color: #000;
+    border-radius: 4px;
+    padding: 10px;
+    font-family: monospace;
+    font-size: 0.9rem;
+    scrollbar-color: #fff #000;
+}
+
+.scroll-window > :last-child {
+    scroll-margin-bottom: 0;
+}
+
+.player-list {
+    height: 250px;
+    overflow-y: auto;
+    border-left: 1px solid #333;
+    scrollbar-color: #fff #000;
+}
+
+.list-group-item {
+    background-color: transparent;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    padding: 4px 10px;
+}
+
+.list-group-item:hover {
+    background-color: #333;
+    color: #fff;
+}
+
 /* Custom Grayscale Button */
 .btn-dark-outline {
-    background-color: #000000;
+    background-color: #000;
     color: #ffffff;
-    border: 2px solid #ffffff; /* The white outline */
-    border-radius: 4px;        /* Keeping it slightly sharp */
+    border: 2px solid #fff;
+    border-radius: 3px;
     padding: 0.5rem 1.25rem;
     transition: all 0.2s ease-in-out;
 }
 
 /* Hover State: Inverse the colors for clear feedback */
 .btn-dark-outline:hover {
-    background-color: #ffffff;
-    color: #000000;
-    border-color: #000000;
+    background-color: #fff;
+    color: #000;
+    border-color: #000;
 }
 
 /* HTMX "In-Flight" State: Make it look disabled/dimmed while loading */
@@ -40,13 +100,14 @@ body {
     cursor: not-allowed;
 }
 
+/* Forms */
 .form-text {
-    color: #ced4da !important; /* A light "Silver" color (Bootstrap's gray-400) */
-    opacity: 0.8;               /* Makes it slightly dimmer than pure white */
-    font-size: 0.875rem;       /* Keeps it slightly smaller than input text */
+    color: #ced4da !important;
+    opacity: 0.8;
+    font-size: 0.875rem;
 }
 
-/* Hide radio but keep it accessible */
+/* Radio style */
 .custom-radio-radio {
     position: absolute;
     opacity: 0;
@@ -63,13 +124,46 @@ body {
     font-size: 1rem;
 }
 
-/* Hover effect */
 .custom-radio-label:hover {
-    color: #999; /* Darker on hover */
+    color: #999;
 }
 
-/* Selected state: Brighter color when radio is checked */
 .custom-radio-radio:checked + .custom-radio-label {
-    color: #fff; /* Bright active color */
+    color: #fff;
     font-weight: 600;
+}
+
+/* svg animations */
+.sprite {
+    /* Smoothly animate changes to top, left, and transform over 0.4 seconds */
+    transition: top 0.4s ease-in-out, left 0.4s ease-in-out, opacity 0.5s ease;
+}
+
+.defeat-animate {
+    animation: fadeOutUp 0.8s forwards ease-out;
+    pointer-events: none; /* Can't click it while it's dying */
+}
+
+@keyframes fadeOutUp {
+    0% {
+        opacity: 1;
+        transform: translate(-50%, -50%); /* Current position */
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -120%); /* "Float" up by shifting center higher */
+    }
+}
+
+
+/* Event Window Graphic Area */
+.event-graphic {
+    height: 250px;
+    background: linear-gradient(1800deg, #1a1a1a 0%, #000 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    border: 1px solid #444;
 }

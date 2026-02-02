@@ -1,0 +1,29 @@
+<div class="small fw-bold">World: <span class="fw-light">Earth</span></div>
+<div class="small fw-bold">Region: <span class="fw-light">{{ region }} ({{ region.get_biome_display }})</span></div>
+<div class="small fw-bold mb-4">Current Location: <span class="fw-light">{{ current_location }}</span></div>
+
+<h6 class="small mb-2">Towns</h6>
+<div class="d-flex flex-wrap gap-2 mb-4">
+{% for town in towns %}
+    {% if current_location != town %}
+        <a class="btn btn-sm btn-dark-outline"
+           hx-post='{% url "travel" %}'
+           hx-vals='{"public_id": "{{ town.public_id }}"}'>
+           {{ town.name }}
+        </a>
+    {% endif %}
+{% endfor %}
+</div>
+
+<h6 class="small mb-2">Dungeons</h6>
+<div class="d-flex flex-wrap gap-2">
+{% for dungeon in dungeons %}
+    {% if current_location != dungeon %}
+        <a class="btn btn-sm btn-dark-outline"
+           hx-post='{% url "travel" %}'
+           hx-vals='{"public_id": "{{ dungeon.public_id }}"}'>
+           {{ dungeon.name }} (lvl {{ dungeon.level }})
+        </a>
+    {% endif %}
+{% endfor %}
+</div>
