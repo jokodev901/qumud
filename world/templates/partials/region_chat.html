@@ -1,4 +1,4 @@
-<div id="region-chat-swap" class="scroll-window" style="border-radius: 0 0 0 4px;" hx-swap-oob="true">
+<div id="region-chat-swap" hx-swap-oob="true">
 {% for message in messages %}
     <div><span class="text-success">{{ message.user.alias }}:</span> {{ message.message }}</div>
 {% endfor %}

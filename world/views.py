@@ -2,15 +2,15 @@ import json
 import time
 import re
 
-from datetime import timedelta
 
 from django.views.generic import TemplateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect, render, reverse
 from django.http import HttpResponse
 from django.db import transaction
-from django.utils import timezone
+
 from django.utils.html import strip_tags
+from django.template.loader import render_to_string
 
 from rest_framework.authtoken.models import Token
 
@@ -194,27 +194,35 @@ class SelectWorld(LoginRequiredMixin, View):
         return render(request, self.template_name, {'form': form})
 
 
-class Map(LoginRequiredMixin, View):
-    """
-    we have 2 kinds of loading
-
-    full page load
-    partial loads
-
-    full page load has to be performed once
-    so have partial loads just be triggered by the refresh?
-    and go ahead and include the partials in the template, but still have the oob swap defined?
-    or, we remove the oob swap from the partials and add it in the for the adhoc renders?
-
-
-    """
+class Map(View):
     template_name = 'map.html'
     partials = []
     context = {}
 
-    def set_location_data(self, player_char):
+    def render_partials(self, partials, context):
+        """
+        Takes a list of template paths and returns a combined HttpResponse.
+        """
+        # rendered = []
+        # for partial in partials:
+        #     rendered.append(render_to_string(partial, context))
+        #
+        # html = ''.join(rendered)
+
+        html = "".join([render_to_string(partial, context) for partial in partials])
+        return HttpResponse(html, context)
+
+    def prep_player(self):
+        player_char = (Entity.objects.select_related('location__region__world')
+                       .only('location', 'location__region', 'location__region__world')
+                       .get(active_id=self.request.user.id))
+
+        return player_char
+
+    def update_location_data(self, player_char):
         current_location = player_char.location
         region = current_location.region
+        world = region.world
 
         locations = Location.objects.all().filter(region=region).order_by('level', 'id')
         towns = [location for location in locations if location.location_type == 'T']
@@ -224,24 +232,68 @@ class Map(LoginRequiredMixin, View):
         self.context['dungeons'] = dungeons
         self.context['region'] = region
         self.context['current_location'] = current_location
+        self.context['world'] = world
 
     def get(self, request):
+        if not self.request.user.is_authenticated:
+            return redirect('login')
+
+        user = self.request.user
+
         try:
-            player_char = (Entity.objects.select_related('location__region')
-                           .only('location', 'location__region')
-                           .get(active=self.request.user))
+            # Do partial processing
+            if request.GET.get('trigger', None) == 'refresh':
+                # We can convert this to just last_refresh and use it for everything
+                if time.time() - user.last_chat_refresh >= 1:
+                    # Chat processing
+                    recent_messages = (
+                        RegionChatMessage.objects.all()
+                        .select_related('user')
+                        .filter(region=user.entity.location.region,
+                                sent_at__gte=time.time() - 3600).order_by('-sent_at')
+                    )
 
-            self.set_location_data(player_char)
+                    if recent_messages:
+                        self.context['messages'] = recent_messages
+                        self.partials.append('partials/region_chat.html')
 
-            messages = (RegionChatMessage.
-                        objects.all().
-                        select_related('user').
-                        filter(region=player_char.location.region,
-                               sent_at__gte=timezone.now() - timedelta(hours=1)).order_by('-sent_at'))
+                    # Nearby players processing
+                    region_players = (
+                        User.objects.all()
+                        .filter(entity__location__region=user.entity.location.region)
+                    )
 
-            self.context['messages'] = messages
+                    if region_players:
+                        self.context['region_players'] = region_players
+                        self.partials.append('partials/region_players.html')
 
-            return render(request, self.template_name, self.context)
+                    # Final time update
+                    user.last_chat_refresh = time.time()
+                    user.save(update_fields=['last_chat_refresh'])
+
+                    if self.partials:
+                        return self.render_partials(self.partials, self.context)
+
+                return HttpResponse(status=204)
+
+            # Do full processing ( initial load )
+            else:
+                player_char = self.prep_player()
+                self.update_location_data(player_char)
+
+                recent_messages = (
+                    RegionChatMessage.objects.all()
+                    .select_related('user')
+                    .filter(region=player_char.location.region,
+                            sent_at__gte=time.time() - 3600).order_by('-sent_at')
+                )
+
+                self.context['messages'] = recent_messages
+
+                player_char.active.last_chat_refresh = time.time()
+                player_char.active.save(update_fields=['last_chat_refresh'])
+
+                return render(request, self.template_name, self.context)
 
         except SyntaxError:
             return redirect('home')
@@ -300,20 +352,6 @@ class RegionChat(View):
 
         return user
 
-    def get(self, request):
-        """
-        get a list of chat messages
-        get list of players
-
-        """
-        if not self.request.user.is_authenticated:
-            return redirect('login')
-
-        placeholder_msgs = ['Hello', 'Another one', 'This is also a chat message']
-        self.context['messages'] = placeholder_msgs
-
-        return render(request, self.template, self.context)
-
     def post(self, request):
         if not self.request.user.is_authenticated:
             return redirect('login')
@@ -325,7 +363,8 @@ class RegionChat(View):
         region = user.entity.location.region
 
         RegionChatMessage.objects.create(message=msg_cleaned, user=user, region=region)
-        messages = RegionChatMessage.objects.all().select_related('user').filter(region=region, sent_at__gte=timezone.now() - timedelta(hours=1)).order_by('-sent_at')
+        messages = (RegionChatMessage.objects.all().select_related('user')
+                    .filter(region=region, sent_at__gte=(time.time() - 3600)).order_by('-sent_at'))
 
         self.context['messages'] = messages
 

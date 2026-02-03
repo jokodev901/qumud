@@ -1,7 +1,7 @@
 {% extends base_template %}
 
 {% block content %}
-<div hx-get="{% url 'map' %}" hx-trigger="every 500s" hx-vals='{"trigger": "refresh"}'></div>
+<div hx-get="{% url 'map' %}" hx-trigger="every 1s" hx-vals='{"trigger": "refresh"}' hx-swap="none"></div>
 <div class="container">
     <div class="row g-3">
         <div class="col-lg-8 col-md-7">
@@ -121,10 +121,12 @@
                     </div>
                     <div class="row g-0">
                         <div class="col-9">
-                            <div id="region-chat-swap" class="scroll-window" style="border-radius: 0 0 0 4px;">
+                            <div class="scroll-window" style="border-radius: 0 0 0 4px;">
+                                <div id="region-chat-swap">
                                 {% for message in messages %}
                                     <div><span class="text-success">{{ message.user.alias }}:</span> {{ message.message }}</div>
                                 {% endfor %}
+                                </div>
                             </div>
                         </div>
                         <div class="col-3">
@@ -163,24 +165,13 @@
     // Start the movement
     const movementInterval = setInterval(moveSprites, 2000);
 
-    // TEST 1: Defeat the first sprite after 6 seconds
+    // TEST 1: Defeat the first sprite after 10 seconds
     setTimeout(() => {
         const sprites = document.querySelectorAll('.sprite');
         if (sprites[0]) {
             console.log("Defeating Sprite 1...");
             sprites[0].classList.add('defeat-animate');
         }
-    }, 6000);
-
-    // TEST 2: Defeat the second sprite after 12 seconds
-    setTimeout(() => {
-        const sprites = document.querySelectorAll('.sprite');
-        if (sprites[1]) {
-            console.log("Defeating Sprite 2...");
-            sprites[1].classList.add('defeat-animate');
-        }
-        // Optional: Clean up the interval once everyone is dead
-        // clearInterval(movementInterval);
-    }, 12000);
+    }, 10000);
 </script>
 {% endblock %}
