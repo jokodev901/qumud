@@ -1,46 +1,5 @@
-<div class="p-2 border-bottom border-secondary">
-    <form id="region-chat-form" style="display: contents;" hx-preserve>
-        <div class="input-group">
-            <input type="text"
-                   class="form-control form-control-sm bg-black text-white border-secondary"
-                   style="--bs-secondary-color: #555;"
-                   name="region-chat-msg"
-                   placeholder="Type a message...">
-            <button class="btn btn-sm btn-dark-outline"
-                    type="submit"
-                    hx-post='{% url "region_chat" %}'>Send</button>
-        </div>
-    </form>
+<div id="region-chat-swap" class="scroll-window" style="border-radius: 0 0 0 4px;" hx-swap-oob="true">
+{% for message in messages %}
+    <div><span class="text-success">{{ message.user.alias }}:</span> {{ message.message }}</div>
+{% endfor %}
 </div>
-<div class="row g-0">
-    <div class="col-9">
-        <div class="scroll-window" style="border-radius: 0 0 0 4px;">
-<!--            <div><span class="text-info">[Global]</span> <span class="text-warning">Grog:</span> Anyone want to raid the chasm?</div>-->
-<!--            <div><span class="text-info">[Region]</span> <span class="text-success">Sly:</span> Selling Iron Ore x20 at Citadel.</div>-->
-            {% for message in messages %}
-                <div><span class="text-success">{{ message.user.alias }}:</span> {{ message.message }}</div>
-            {% endfor %}
-
-        </div>
-    </div>
-    <div class="col-3">
-        <div class="player-list">
-            <div class="px-2 pt-2 pb-1 small border-bottom border-secondary mb-1">Online Players</div>
-            <div class="list-group list-group-flush">
-                <div class="list-group-item" data-player-id="101">Grog_The_Tall</div>
-                <div class="list-group-item" data-player-id="102">Sly</div>
-                <div class="list-group-item" data-player-id="103">Mist_Walker</div>
-                <div class="list-group-item" data-player-id="104">Shadow</div>
-                <div class="list-group-item" data-player-id="104">Shadow</div>
-                <div class="list-group-item" data-player-id="104">Shadow</div>
-                <div class="list-group-item" data-player-id="104">Shadow</div>
-                <div class="list-group-item" data-player-id="104">Shadow</div>
-                <div class="list-group-item" data-player-id="104">Shadow</div>
-                <div class="list-group-item" data-player-id="104">Shadow</div>
-                <div class="list-group-item" data-player-id="104">Shadow</div>
-                <div class="list-group-item" data-player-id="104">Shadow</div>
-            </div>
-        </div>
-    </div>
-</div>
-

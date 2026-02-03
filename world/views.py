@@ -1,5 +1,6 @@
 import json
 import time
+import re
 
 from datetime import timedelta
 
@@ -9,7 +10,7 @@ from django.shortcuts import redirect, render, reverse
 from django.http import HttpResponse
 from django.db import transaction
 from django.utils import timezone
-from django.utils.html import escape
+from django.utils.html import strip_tags
 
 from rest_framework.authtoken.models import Token
 
@@ -17,6 +18,14 @@ from core.utils import generators
 from authentication.models import User
 from .models import Entity, World, Region, Location, RegionChatMessage
 from .forms import CharacterCreationForm, WorldCreationForm
+
+
+def clean_text(text: str) -> str:
+    cleaned = strip_tags(text)
+    cleaned = cleaned.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+    cleaned = re.sub(' +', ' ', cleaned)
+
+    return cleaned.strip()
 
 
 class UserProfileView(LoginRequiredMixin, TemplateView):
@@ -186,7 +195,21 @@ class SelectWorld(LoginRequiredMixin, View):
 
 
 class Map(LoginRequiredMixin, View):
+    """
+    we have 2 kinds of loading
+
+    full page load
+    partial loads
+
+    full page load has to be performed once
+    so have partial loads just be triggered by the refresh?
+    and go ahead and include the partials in the template, but still have the oob swap defined?
+    or, we remove the oob swap from the partials and add it in the for the adhoc renders?
+
+
+    """
     template_name = 'map.html'
+    partials = []
     context = {}
 
     def set_location_data(self, player_char):
@@ -209,6 +232,14 @@ class Map(LoginRequiredMixin, View):
                            .get(active=self.request.user))
 
             self.set_location_data(player_char)
+
+            messages = (RegionChatMessage.
+                        objects.all().
+                        select_related('user').
+                        filter(region=player_char.location.region,
+                               sent_at__gte=timezone.now() - timedelta(hours=1)).order_by('-sent_at'))
+
+            self.context['messages'] = messages
 
             return render(request, self.template_name, self.context)
 
@@ -278,7 +309,6 @@ class RegionChat(View):
         if not self.request.user.is_authenticated:
             return redirect('login')
 
-
         placeholder_msgs = ['Hello', 'Another one', 'This is also a chat message']
         self.context['messages'] = placeholder_msgs
 
@@ -288,8 +318,8 @@ class RegionChat(View):
         if not self.request.user.is_authenticated:
             return redirect('login')
 
-        msg = request.POST.get('region-chat-msg', '').strip()
-        msg_cleaned = escape(msg)
+        msg = request.POST.get('region-chat-msg', '')
+        msg_cleaned = clean_text(msg)
 
         user = self.prep_user()
         region = user.entity.location.region

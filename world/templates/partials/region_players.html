@@ -1,0 +1,6 @@
+<div id="player-list-swap" class="list-group list-group-flush" hx-swap-oob="true">
+  <div class="list-group-item" data-public-id="1">Placeholderson</div>
+{% for player in players %}
+    <div class="list-group-item" data-public-id="{{ player.public_id }}">{{ player.name }}</div>
+{% endfor %}
+</div>
