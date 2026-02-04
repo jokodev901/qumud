@@ -1,7 +1,7 @@
 {% extends base_template %}
 
 {% block content %}
-<div hx-get="{% url 'map' %}" hx-trigger="every 1s" hx-vals='{"trigger": "refresh"}' hx-swap="none"></div>
+<div hx-get="{% url 'map' %}" hx-trigger="every 1s" hx-vals='{"trigger": "update"}' hx-swap="none"></div>
 <div class="container">
     <div class="row g-3">
         <div class="col-lg-8 col-md-7">
@@ -133,9 +133,8 @@
                             <div class="player-list">
                                 <div class="px-2 pt-2 pb-1 small border-bottom border-secondary mb-1">Online Players</div>
                                 <div id="player-list-swap" class="list-group list-group-flush">
-                                    <div class="list-group-item" data-public-id="1">Placeholderson</div>
-                                    {% for player in players %}
-                                        <div class="list-group-item" data-public-id="{{ player.public_id }}">{{ player.name }}</div>
+                                    {% for player in region_players %}
+                                        <div class="list-group-item">{{ player.alias }}</div>
                                     {% endfor %}
                                 </div>
                             </div>

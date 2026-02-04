@@ -6,7 +6,7 @@ from django.contrib.auth.models import AbstractUser
 
 class User(AbstractUser):
     alias = models.CharField('In game alias', max_length=36, unique=True, default=uuid.uuid4)
-    last_chat_refresh = models.FloatField('Last chat refresh time', default=0)
+    last_update = models.FloatField('User last update check', default=0)
 
     def __str__(self):
         return self.username

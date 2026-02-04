@@ -1,6 +1,7 @@
 import json
 import time
 import re
+import math
 
 
 from django.views.generic import TemplateView, View
@@ -196,31 +197,24 @@ class SelectWorld(LoginRequiredMixin, View):
 
 class Map(View):
     template_name = 'map.html'
-    partials = []
-    context = {}
 
     def render_partials(self, partials, context):
         """
         Takes a list of template paths and returns a combined HttpResponse.
         """
-        # rendered = []
-        # for partial in partials:
-        #     rendered.append(render_to_string(partial, context))
-        #
-        # html = ''.join(rendered)
-
         html = "".join([render_to_string(partial, context) for partial in partials])
         return HttpResponse(html, context)
 
-    def prep_player(self):
-        player_char = (Entity.objects.select_related('location__region__world')
-                       .only('location', 'location__region', 'location__region__world')
-                       .get(active_id=self.request.user.id))
+    def prep_user(self):
+        user = (User.objects
+                .select_related('entity__location__region__world')
+                .get(id=self.request.user.id))
 
-        return player_char
+        return user
 
-    def update_location_data(self, player_char):
-        current_location = player_char.location
+    def init_location_context(self, user):
+        context = {}
+        current_location = user.entity.location
         region = current_location.region
         world = region.world
 
@@ -228,24 +222,29 @@ class Map(View):
         towns = [location for location in locations if location.location_type == 'T']
         dungeons = [location for location in locations if location.location_type == 'D']
 
-        self.context['towns'] = towns
-        self.context['dungeons'] = dungeons
-        self.context['region'] = region
-        self.context['current_location'] = current_location
-        self.context['world'] = world
+        context['towns'] = towns
+        context['dungeons'] = dungeons
+        context['region'] = region
+        context['current_location'] = current_location
+        context['world'] = world
+
+        return context
 
     def get(self, request):
         if not self.request.user.is_authenticated:
             return redirect('login')
 
-        user = self.request.user
+        user = self.prep_user()
+        context = {}
 
         try:
             # Do partial processing
-            if request.GET.get('trigger', None) == 'refresh':
-                # We can convert this to just last_refresh and use it for everything
-                if time.time() - user.last_chat_refresh >= 1:
-                    # Chat processing
+            if request.GET.get('trigger', None) == 'update':
+                ticks = math.floor(time.time() - user.last_update)
+
+                if ticks > 0:
+                    partials = []
+
                     recent_messages = (
                         RegionChatMessage.objects.all()
                         .select_related('user')
@@ -253,47 +252,55 @@ class Map(View):
                                 sent_at__gte=time.time() - 3600).order_by('-sent_at')
                     )
 
-                    if recent_messages:
-                        self.context['messages'] = recent_messages
-                        self.partials.append('partials/region_chat.html')
-
-                    # Nearby players processing
                     region_players = (
                         User.objects.all()
-                        .filter(entity__location__region=user.entity.location.region)
+                        .filter(entity__location__region=user.entity.location.region,
+                                last_update__gte=time.time() - 10)
+                        .order_by('alias')
                     )
 
+                    if recent_messages:
+                        context['messages'] = recent_messages
+                        partials.append('partials/region_chat.html')
+
                     if region_players:
-                        self.context['region_players'] = region_players
-                        self.partials.append('partials/region_players.html')
+                        context['region_players'] = region_players
+                        partials.append('partials/region_players.html')
 
                     # Final time update
-                    user.last_chat_refresh = time.time()
-                    user.save(update_fields=['last_chat_refresh'])
+                    user.last_update = time.time()
+                    user.save(update_fields=['last_update'])
 
-                    if self.partials:
-                        return self.render_partials(self.partials, self.context)
+                    if partials:
+                        return self.render_partials(partials, context)
 
                 return HttpResponse(status=204)
 
             # Do full processing ( initial load )
             else:
-                player_char = self.prep_player()
-                self.update_location_data(player_char)
+                context = self.init_location_context(user)
 
                 recent_messages = (
                     RegionChatMessage.objects.all()
                     .select_related('user')
-                    .filter(region=player_char.location.region,
+                    .filter(region=user.entity.location.region,
                             sent_at__gte=time.time() - 3600).order_by('-sent_at')
                 )
 
-                self.context['messages'] = recent_messages
+                region_players = (
+                    User.objects.all()
+                    .filter(entity__location__region=user.entity.location.region,
+                            last_update__gte=time.time() - 10)
+                    .order_by('alias')
+                )
 
-                player_char.active.last_chat_refresh = time.time()
-                player_char.active.save(update_fields=['last_chat_refresh'])
+                context['region_players'] = region_players
+                context['messages'] = recent_messages
 
-                return render(request, self.template_name, self.context)
+                user.entity.active.last_update = time.time()
+                user.entity.active.save(update_fields=['last_update'])
+
+                return render(request, self.template_name, context)
 
         except SyntaxError:
             return redirect('home')
@@ -323,7 +330,8 @@ class Travel(LoginRequiredMixin, View):
                     player_char.location = selected_location
                     player_char.save(update_fields=['location'])
 
-                locations = Location.objects.all().filter(region=selected_location.region).order_by('level', 'id')
+                locations = (Location.objects.all()
+                             .filter(region=selected_location.region).order_by('level', 'id'))
                 towns = [location for location in locations if location.location_type == 'T']
                 dungeons = [location for location in locations if location.location_type == 'D']
 
