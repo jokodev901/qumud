@@ -95,6 +95,7 @@ class Entity(models.Model):
     max_targets = models.IntegerField(default=1)
     position = models.IntegerField(default=None, null=True, db_index=True)
     level = models.IntegerField(default=1)
+    new_status = models.BooleanField(default=False)
 
     target = models.ForeignKey('Entity', null=True, blank=True, on_delete=models.SET_NULL, related_name='targeted_by')
     owner = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='user_characters')
@@ -107,6 +108,23 @@ class Entity(models.Model):
 
     class Meta:
         verbose_name_plural = 'entities'
+
+
+class EnemyTemplate(models.Model):
+    svg = models.TextField()
+    name = models.CharField('Name', max_length=32)
+    max_health = models.IntegerField(default=1)
+    attack_range = models.IntegerField(default=1)
+    attack_damage = models.IntegerField(default=1)
+    speed = models.IntegerField(default=1)
+    initiative = models.IntegerField(default=0)
+    max_targets = models.IntegerField(default=1)
+    level = models.IntegerField(default=1)
+
+    location = models.ForeignKey(Location, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.name
 
 
 class RegionChatMessage(models.Model):

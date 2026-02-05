@@ -36,27 +36,31 @@
             <div id="status-card" class="card mb-3" hx-target="#status-card-body">
                 <div class="card-header">Status</div>
                 <div id="status-card-body" class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="fw-bold">Eldrin the Brave</span>
-                        <span class="badge bg-secondary">Lvl 12</span>
-                    </div>
-                    <div class="progress mb-2 position-relative bg-black border border-white" style="height: 20px;">
-                        <div class="progress-bar bg-danger"
-                             role="progressbar"
-                             style="width: 75%;"
-                             aria-valuenow="75"
-                             aria-valuemin="0"
-                             aria-valuemax="100"></div>
-                        <span class="justify-content-center d-flex position-absolute w-100 text-white text-shadow">75 / 100 HP</span>
-                    </div>
-                    <div class="progress mb-2 position-relative bg-black border border-white" style="height: 20px;">
-                        <div class="progress-bar bg-info"
-                             role="progressbar"
-                             style="width: 100%;"
-                             aria-valuenow="100"
-                             aria-valuemin="0"
-                             aria-valuemax="100"></div>
-                        <span class="justify-content-center d-flex position-absolute w-100 text-white text-shadow">100 / 100 MP</span>
+                    <div id="status-card-swap">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-bold">{{ character.name }}</span>
+                            <span class="badge bg-secondary">Lvl {{  character.level }}</span>
+                        </div>
+                        <div class="progress mb-2 position-relative bg-black border border-white" style="height: 20px;">
+                            <div class="progress-bar bg-danger"
+                                 role="progressbar"
+                                 style="width: {{ character_health_perc }}%;"
+                                 aria-valuenow="{{ character.health }}"
+                                 aria-valuemin="0"
+                                 aria-valuemax="{{ character.max_health }}"></div>
+                            <span class="justify-content-center d-flex position-absolute w-100 text-white text-shadow">
+                                {{ character.health }} / {{ character.max_health }} HP</span>
+                        </div>
+                        <div class="progress mb-2 position-relative bg-black border border-white" style="height: 20px;">
+                            <div class="progress-bar bg-info"
+                                 role="progressbar"
+                                 style="width: 100%;"
+                                 aria-valuenow="100"
+                                 aria-valuemin="0"
+                                 aria-valuemax="100"></div>
+                            <span class="justify-content-center d-flex position-absolute w-100 text-white text-shadow">
+                                100 / 100 MP</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -64,36 +68,7 @@
             <div id="travel-card" class="card" hx-target="#travel-card-body">
                 <div class="card-header">Travel</div>
                     <div id="travel-card-body" class="card-body">
-                        <div class="small fw-bold">World: <span class="fw-light">Earth</span></div>
-                            <div class="small fw-bold">Region: <span class="fw-light">{{ region }} ({{ region.get_biome_display }})</span></div>
-                            <div class="small fw-bold mb-4">Current Location: <span class="fw-light">{{ current_location }}</span></div>
-
-                            <h6 class="small mb-2">Towns</h6>
-                            <div class="d-flex flex-wrap gap-2 mb-4">
-                            {% for town in towns %}
-                                {% if current_location != town %}
-                                    <a class="btn btn-sm btn-dark-outline"
-                                       hx-post='{% url "travel" %}'
-                                       hx-vals='{"public_id": "{{ town.public_id }}"}'>
-                                       {{ town.name }}
-                                    </a>
-                                {% endif %}
-                            {% endfor %}
-                            </div>
-
-                            <h6 class="small mb-2">Dungeons</h6>
-                            <div class="d-flex flex-wrap gap-2">
-                            {% for dungeon in dungeons %}
-                                {% if current_location != dungeon %}
-                                    <a class="btn btn-sm btn-dark-outline"
-                                       hx-post='{% url "travel" %}'
-                                       hx-vals='{"public_id": "{{ dungeon.public_id }}"}'>
-                                       {{ dungeon.name }} (lvl {{ dungeon.level }})
-                                    </a>
-                                {% endif %}
-                            {% endfor %}
-                            </div>
-                    </div>
+                    {% include 'partials/travel.html' %}
             </div>
         </div>
     </div>

@@ -29,6 +29,21 @@ def clean_text(text: str) -> str:
     return cleaned.strip()
 
 
+def get_region_messages(region: Region, delta: float = 300):
+    messages = (RegionChatMessage.objects.all().select_related('user')
+                .filter(region=region, sent_at__gte=(time.time() - delta)).order_by('-sent_at'))[:50]
+
+    return messages
+
+
+def get_region_players(region: Region):
+    players = (User.objects.all()
+               .filter(entity__location__region=region, last_update__gte=time.time() - 10)
+               .order_by('alias'))
+
+    return players
+
+
 class UserProfileView(LoginRequiredMixin, TemplateView):
     template_name = 'profile.html'
 
@@ -240,24 +255,20 @@ class Map(View):
         try:
             # Do partial processing
             if request.GET.get('trigger', None) == 'update':
-                ticks = math.floor(time.time() - user.last_update)
+                delta = time.time() - user.last_update
+                ticks = math.floor(delta)
 
                 if ticks > 0:
                     partials = []
 
-                    recent_messages = (
-                        RegionChatMessage.objects.all()
-                        .select_related('user')
-                        .filter(region=user.entity.location.region,
-                                sent_at__gte=time.time() - 3600).order_by('-sent_at')
-                    )
+                    recent_messages = get_region_messages(region=user.entity.location.region)
+                    region_players = get_region_players(region=user.entity.location.region)
 
-                    region_players = (
-                        User.objects.all()
-                        .filter(entity__location__region=user.entity.location.region,
-                                last_update__gte=time.time() - 10)
-                        .order_by('alias')
-                    )
+                    if user.entity.new_status:
+                        health_perc = math.floor((user.entity.max_health / user.entity.health) * 100)
+                        context['character'] = user.entity
+                        context['character_health_perc'] = health_perc
+                        partials.append('partials/status.html')
 
                     if recent_messages:
                         context['messages'] = recent_messages
@@ -280,22 +291,14 @@ class Map(View):
             else:
                 context = self.init_location_context(user)
 
-                recent_messages = (
-                    RegionChatMessage.objects.all()
-                    .select_related('user')
-                    .filter(region=user.entity.location.region,
-                            sent_at__gte=time.time() - 3600).order_by('-sent_at')
-                )
-
-                region_players = (
-                    User.objects.all()
-                    .filter(entity__location__region=user.entity.location.region,
-                            last_update__gte=time.time() - 10)
-                    .order_by('alias')
-                )
+                recent_messages = get_region_messages(region=user.entity.location.region)
+                region_players = get_region_players(region=user.entity.location.region)
+                health_perc = math.floor((user.entity.max_health / user.entity.health) * 100)
 
                 context['region_players'] = region_players
                 context['messages'] = recent_messages
+                context['character'] = user.entity
+                context['character_health_perc'] = health_perc
 
                 user.entity.active.last_update = time.time()
                 user.entity.active.save(update_fields=['last_update'])
@@ -312,8 +315,8 @@ class Travel(LoginRequiredMixin, View):
     def post(self, request):
         context = {}
 
-        selected_location = (Location.objects.select_related('region')
-                             .only('region', 'last_event')
+        selected_location = (Location.objects.select_related('region__world')
+                             .only('region', 'last_event', 'world')
                              .get(public_id=request.POST['public_id']))
 
         player_char = (Entity.objects.select_related('location__region')
@@ -338,6 +341,7 @@ class Travel(LoginRequiredMixin, View):
                 context['towns'] = towns
                 context['dungeons'] = dungeons
                 context['region'] = selected_location.region
+                context['world'] = selected_location.region.world
                 context['current_location'] = selected_location
 
                 return render(request, self.template, context)
@@ -349,7 +353,6 @@ class Travel(LoginRequiredMixin, View):
 
 class RegionChat(View):
     template = 'partials/region_chat.html'
-    context = {}
 
     def prep_user(self):
         user = (
@@ -364,6 +367,8 @@ class RegionChat(View):
         if not self.request.user.is_authenticated:
             return redirect('login')
 
+        context = {}
+
         msg = request.POST.get('region-chat-msg', '')
         msg_cleaned = clean_text(msg)
 
@@ -371,9 +376,8 @@ class RegionChat(View):
         region = user.entity.location.region
 
         RegionChatMessage.objects.create(message=msg_cleaned, user=user, region=region)
-        messages = (RegionChatMessage.objects.all().select_related('user')
-                    .filter(region=region, sent_at__gte=(time.time() - 3600)).order_by('-sent_at'))
+        messages = get_region_messages(region=region)
 
-        self.context['messages'] = messages
+        context['messages'] = messages
 
-        return render(request, self.template, self.context)
+        return render(request, self.template, context)
