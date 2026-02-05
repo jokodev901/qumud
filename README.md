@@ -11,18 +11,26 @@ Combat events are based on realtime server ticks, but are not simulated until re
 
 ## Overview
 
-QuMUD is currently under active development, with the current focus on standing up a stripped down web app to demonstrate and test the core systems. 
+QuMUD is currently under active development, with the current focus on standing up a stripped down web app to demonstrate and test the core systems.
+
+### Current Features
+- Basic user auth
+- Placeholder character creation
+- Can create or join existing Worlds by name
+- Worlds generate procgen starting region, town, dungeons, enemy templates
+- Can see other active players in region and chat with them
+
+---
 
 ### In Progress Features
-- **User Authentication:** User registration, login, and Player alias management via Django auth.
-- **Character Creation:** A temporary character creation template is in place, will be replaced with a more robust class/stat-based system.  
-- **World Creation:** Game worlds are generated via seed (world name), currently implementing Region and location generation.
+- **Character Creation:** A temporary character creation template is in place, will be replaced with a more robust class/stat-based system.
+- **Event and Enemy Management:** procgen enemy templates being created, working on combat event management
 
 ---
 
 ### What's next?
-- **Events:**  Placeholder towns and working "dungeon" event areas with enemies and combat.
-- **Stat system:**  Initial implementation of character building with stat weights and xp/levelling system
+- **Combat events:** Combat logic between player and enemies and manage event state
+- **Stat system:** Character creation with stat weights and xp/levelling system
 - **Loot:**  Initial item system with placeholder equipment 
 
 ---
@@ -31,7 +39,7 @@ QuMUD is currently under active development, with the current focus on standing 
 
 This project is being built using Django, HTMX, and Bootstrap, focusing on server-side state and low-latency interactions.
 
-- **Backend:** [Django 5.x](https://www.djangoproject.com/)
+- **Backend:** [Django 6.0](https://www.djangoproject.com/)
 - **API:** [Django REST Framework](https://www.django-rest-framework.org)
 - **Frontend:** [HTMX](https://htmx.org/), Django Templates
 - **CSS:** [Bootstrap 5](https://getbootstrap.com/)
