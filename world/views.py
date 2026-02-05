@@ -17,31 +17,53 @@ from rest_framework.authtoken.models import Token
 
 from core.utils import generators
 from authentication.models import User
-from .models import Entity, World, Region, Location, RegionChatMessage
+from .models import Entity, World, Region, Location, RegionChatMessage, EnemyTemplate
 from .forms import CharacterCreationForm, WorldCreationForm
 
 
-def clean_text(text: str) -> str:
-    cleaned = strip_tags(text)
-    cleaned = cleaned.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
-    cleaned = re.sub(' +', ' ', cleaned)
+class BaseView(View):
 
-    return cleaned.strip()
+    @staticmethod
+    def clean_text(text: str) -> str:
+        cleaned = strip_tags(text)
+        cleaned = cleaned.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+        cleaned = re.sub(' +', ' ', cleaned)
 
+        return cleaned.strip()
 
-def get_region_messages(region: Region, delta: float = 300):
-    messages = (RegionChatMessage.objects.all().select_related('user')
-                .filter(region=region, sent_at__gte=(time.time() - delta)).order_by('-sent_at'))[:50]
+    @staticmethod
+    def get_region_messages(region: Region, count: int = 50):
+        messages = (RegionChatMessage.objects.all().select_related('user')
+                    .filter(region=region).order_by('-sent_at'))[:count]
 
-    return messages
+        return messages
 
+    @staticmethod
+    def get_region_players(region: Region, timeout: int = 10):
+        players = (User.objects.all()
+                   .filter(entity__location__region=region, last_update__gte=time.time() - timeout)
+                   .order_by('alias'))
 
-def get_region_players(region: Region):
-    players = (User.objects.all()
-               .filter(entity__location__region=region, last_update__gte=time.time() - 10)
-               .order_by('alias'))
+        return players
 
-    return players
+    @staticmethod
+    def get_travel_data(user: User) -> dict:
+        data = {}
+        current_location = user.entity.location
+        region = current_location.region
+        world = region.world
+
+        locations = Location.objects.all().filter(region=region).order_by('level', 'id')
+        towns = [location for location in locations if location.location_type == 'T']
+        dungeons = [location for location in locations if location.location_type == 'D']
+
+        data['towns'] = towns
+        data['dungeons'] = dungeons
+        data['region'] = region
+        data['current_location'] = current_location
+        data['world'] = world
+
+        return data
 
 
 class UserProfileView(LoginRequiredMixin, TemplateView):
@@ -142,7 +164,7 @@ class CreateCharacter(LoginRequiredMixin, View):
         return render(request, self.template_name, {'form': form})
 
 
-class SelectWorld(LoginRequiredMixin, View):
+class SelectWorld(LoginRequiredMixin, BaseView):
     template_name = 'world.html'
 
     def get(self, request):
@@ -186,8 +208,14 @@ class SelectWorld(LoginRequiredMixin, View):
                         world.start_location = t
 
                     for dungeon in region_data['locations']['dungeons']:
-                        Location.objects.create(location_type='D', name=dungeon['name'], level=dungeon['level'],
-                                                region=region)
+                        location = Location.objects.create(location_type='D', name=dungeon['name'],
+                                                           level=dungeon['level'], region=region)
+
+                        enemy_temps = generators.generate_enemies(seed=dungeon['name'], level=dungeon['level'],
+                                                                  biome=region_data['biome'], count=5)
+
+                        for enemy in enemy_temps:
+                            EnemyTemplate.objects.create(location=location, name=enemy['name'], svg=enemy['svg'])
 
                     world.save()
 
@@ -210,7 +238,7 @@ class SelectWorld(LoginRequiredMixin, View):
         return render(request, self.template_name, {'form': form})
 
 
-class Map(View):
+class Map(BaseView):
     template_name = 'map.html'
 
     def render_partials(self, partials, context):
@@ -218,7 +246,7 @@ class Map(View):
         Takes a list of template paths and returns a combined HttpResponse.
         """
         html = "".join([render_to_string(partial, context) for partial in partials])
-        return HttpResponse(html, context)
+        return HttpResponse(html)
 
     def prep_user(self):
         user = (User.objects
@@ -227,33 +255,16 @@ class Map(View):
 
         return user
 
-    def init_location_context(self, user):
-        context = {}
-        current_location = user.entity.location
-        region = current_location.region
-        world = region.world
-
-        locations = Location.objects.all().filter(region=region).order_by('level', 'id')
-        towns = [location for location in locations if location.location_type == 'T']
-        dungeons = [location for location in locations if location.location_type == 'D']
-
-        context['towns'] = towns
-        context['dungeons'] = dungeons
-        context['region'] = region
-        context['current_location'] = current_location
-        context['world'] = world
-
-        return context
-
     def get(self, request):
-        if not self.request.user.is_authenticated:
+        user = self.prep_user()
+
+        if not user.is_authenticated:
             return redirect('login')
 
-        user = self.prep_user()
         context = {}
 
         try:
-            # Do partial processing
+            # Render partials (update trigger)
             if request.GET.get('trigger', None) == 'update':
                 delta = time.time() - user.last_update
                 ticks = math.floor(delta)
@@ -261,13 +272,12 @@ class Map(View):
                 if ticks > 0:
                     partials = []
 
-                    recent_messages = get_region_messages(region=user.entity.location.region)
-                    region_players = get_region_players(region=user.entity.location.region)
+                    recent_messages = self.get_region_messages(region=user.entity.location.region)
+                    region_players = self.get_region_players(region=user.entity.location.region)
 
                     if user.entity.new_status:
-                        health_perc = math.floor((user.entity.max_health / user.entity.health) * 100)
                         context['character'] = user.entity
-                        context['character_health_perc'] = health_perc
+                        context['character_health_perc'] = user.entity.health_perc
                         partials.append('partials/status.html')
 
                     if recent_messages:
@@ -278,6 +288,16 @@ class Map(View):
                         context['region_players'] = region_players
                         partials.append('partials/region_players.html')
 
+                    # Placeholder event processing
+                    # just rendering svgs and enemy names for now
+                    # placeholder enemy rendering
+                    if user.entity.new_location:
+                        enemy_svgs = EnemyTemplate.objects.filter(location=user.entity.location)
+                        context['enemy_svgs'] = enemy_svgs
+                        partials.append('partials/event.html')
+                        user.entity.new_location = False
+                        user.entity.save(update_fields=['new_location'])
+
                     # Final time update
                     user.last_update = time.time()
                     user.save(update_fields=['last_update'])
@@ -287,21 +307,27 @@ class Map(View):
 
                 return HttpResponse(status=204)
 
-            # Do full processing ( initial load )
+            # Render full template ( initial load )
             else:
-                context = self.init_location_context(user)
+                context['travel'] = self.get_travel_data(user)
 
-                recent_messages = get_region_messages(region=user.entity.location.region)
-                region_players = get_region_players(region=user.entity.location.region)
-                health_perc = math.floor((user.entity.max_health / user.entity.health) * 100)
+                # placeholder enemy rendering
+                enemy_svgs = EnemyTemplate.objects.filter(location=user.entity.location)
+                context['enemy_svgs'] = enemy_svgs
+
+                recent_messages = self.get_region_messages(region=user.entity.location.region)
+                region_players = self.get_region_players(region=user.entity.location.region)
 
                 context['region_players'] = region_players
                 context['messages'] = recent_messages
                 context['character'] = user.entity
-                context['character_health_perc'] = health_perc
+                context['character_health_perc'] = user.entity.health_perc
 
-                user.entity.active.last_update = time.time()
-                user.entity.active.save(update_fields=['last_update'])
+                user.last_update = time.time()
+                user.entity.new_location = False
+
+                user.save(update_fields=['last_update'])
+                user.entity.save(update_fields=['new_location'])
 
                 return render(request, self.template_name, context)
 
@@ -309,7 +335,7 @@ class Map(View):
             return redirect('home')
 
 
-class Travel(LoginRequiredMixin, View):
+class Travel(LoginRequiredMixin, BaseView):
     template = 'partials/travel.html'
 
     def post(self, request):
@@ -319,30 +345,20 @@ class Travel(LoginRequiredMixin, View):
                              .only('region', 'last_event', 'world')
                              .get(public_id=request.POST['public_id']))
 
-        player_char = (Entity.objects.select_related('location__region')
-                       .only('location', 'location__region')
-                       .get(active=self.request.user))
+        user = (User.objects.select_related('entity__location__region__world').get(id=self.request.user.id))
 
-        if selected_location != player_char.location:
-            if selected_location.region == player_char.location.region:
+        if selected_location != user.entity.location:
+            if selected_location.region ==  user.entity.location.region:
                 with transaction.atomic():
                     if not selected_location.last_event:
                         selected_location.last_event = time.time()
                         selected_location.save(update_fields=['last_event'])
 
-                    player_char.location = selected_location
-                    player_char.save(update_fields=['location'])
+                    user.entity.location = selected_location
+                    user.entity.new_location = True
+                    user.entity.save(update_fields=['location', 'new_location'])
 
-                locations = (Location.objects.all()
-                             .filter(region=selected_location.region).order_by('level', 'id'))
-                towns = [location for location in locations if location.location_type == 'T']
-                dungeons = [location for location in locations if location.location_type == 'D']
-
-                context['towns'] = towns
-                context['dungeons'] = dungeons
-                context['region'] = selected_location.region
-                context['world'] = selected_location.region.world
-                context['current_location'] = selected_location
+                context['travel'] = self.get_travel_data(user)
 
                 return render(request, self.template, context)
 
@@ -351,7 +367,7 @@ class Travel(LoginRequiredMixin, View):
         return HttpResponse(status=204)
 
 
-class RegionChat(View):
+class RegionChat(BaseView):
     template = 'partials/region_chat.html'
 
     def prep_user(self):
@@ -370,13 +386,13 @@ class RegionChat(View):
         context = {}
 
         msg = request.POST.get('region-chat-msg', '')
-        msg_cleaned = clean_text(msg)
+        msg_cleaned = self.clean_text(text=msg)
 
         user = self.prep_user()
         region = user.entity.location.region
 
         RegionChatMessage.objects.create(message=msg_cleaned, user=user, region=region)
-        messages = get_region_messages(region=region)
+        messages = self.get_region_messages(region=region)
 
         context['messages'] = messages
 

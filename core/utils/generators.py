@@ -1,13 +1,11 @@
 import random
 
 from .markov import MarkovNameGenerator
+from .procgen_svg import generate_abstract_entity
 from .corpus import CORPUS
 
 
 def generate_town(seed: str, level: int) -> dict:
-    rand = random.Random()
-    rand.seed(seed)
-
     gen = MarkovNameGenerator(order=3, seed=seed, normalize_case=True)
     gen.fit(CORPUS['towns'])
     name = gen.generate(max_len=24, min_len=6, avoid_training=True)
@@ -24,10 +22,9 @@ def generate_town(seed: str, level: int) -> dict:
 
 def generate_dungeons(seed: str, level: int, count: int) -> list[dict]:
     dungeons = []
-    rand = random.Random()
-    rand.seed(seed)
+    random.seed(seed)
 
-    levels = rand.choices(range(level, level+4), k=count)
+    levels = random.choices(range(level, level+4), k=count)
 
     gen = MarkovNameGenerator(order=3, seed=seed, normalize_case=True)
     gen.fit(CORPUS['dungeons'])
@@ -45,9 +42,8 @@ def generate_dungeons(seed: str, level: int, count: int) -> list[dict]:
 
 
 def generate_region(seed: str, level: int) -> dict:
-    rand = random.Random()
-    rand.seed(seed)
-    biome = rand.choice(list(CORPUS['biomes'].keys()))
+    random.seed(seed)
+    biome = random.choice(list(CORPUS['biomes'].keys()))
 
     gen = MarkovNameGenerator(order=3, seed=seed, normalize_case=True)
     gen.fit(CORPUS['biomes'][biome]['regions'])
@@ -70,5 +66,24 @@ def generate_region(seed: str, level: int) -> dict:
     return region_dict
 
 
-if __name__ == '__main__':
-    print(generate_region('hello', 1))
+def generate_enemies(seed: str, level: int, biome: str, count: int) -> list[dict]:
+    enemies = []
+    random.seed(seed)
+
+    gen = MarkovNameGenerator(order=3, seed=seed, normalize_case=True)
+    gen.fit(CORPUS['biomes'][biome]['enemies'])
+    names = gen.generate_many(k=count, max_len=24, min_len=6, avoid_training=True)
+
+    for name in names:
+        words = name.split()
+
+        if len(words) > 1 and len(words[-1]) < 4:
+            words.pop()
+
+        name = " ".join(words).title()
+        svg = generate_abstract_entity(seed_string=name)
+
+        enemy_dict = {'name': name, 'level': level, 'svg': svg}
+        enemies.append(enemy_dict)
+
+    return enemies

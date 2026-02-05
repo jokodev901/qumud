@@ -1,5 +1,6 @@
 import uuid
 import time
+import math
 
 from django.db import models
 from authentication.models import User
@@ -96,12 +97,17 @@ class Entity(models.Model):
     position = models.IntegerField(default=None, null=True, db_index=True)
     level = models.IntegerField(default=1)
     new_status = models.BooleanField(default=False)
+    new_location = models.BooleanField(default=False)
 
     target = models.ForeignKey('Entity', null=True, blank=True, on_delete=models.SET_NULL, related_name='targeted_by')
     owner = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='user_characters')
     active = models.OneToOneField(User, null=True, blank=True, on_delete=models.CASCADE)
     event = models.ForeignKey(Event, null=True, blank=True, on_delete=models.SET_NULL, related_name='event_entities')
     location = models.ForeignKey(Location, null=True, blank=True, on_delete=models.SET_NULL, related_name='location_entities')
+
+    @property
+    def health_perc(self):
+        return math.floor((self.max_health / self.health) * 100)
 
     def __str__(self):
         return self.name
