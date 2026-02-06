@@ -3,11 +3,11 @@ import time
 import re
 import math
 
-
 from django.views.generic import TemplateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect, render, reverse
 from django.http import HttpResponse
+from django.db.models import Prefetch, Count, Q
 from django.db import transaction
 
 from django.utils.html import strip_tags
@@ -17,11 +17,29 @@ from rest_framework.authtoken.models import Token
 
 from core.utils import generators
 from authentication.models import User
-from .models import Entity, World, Region, Location, RegionChatMessage, EnemyTemplate
+from .models import Entity, World, Region, Location, RegionChatMessage, EnemyTemplate, Event
 from .forms import CharacterCreationForm, WorldCreationForm
 
 
 class BaseView(View):
+    def prep_user(self, related: list = ()) -> User | None:
+        '''
+        Avoids duplicate user queries each time authentication is checked and prepares related data
+        '''
+
+        # Extract user id from session data
+        user_id = self.request.session.get('_auth_user_id')
+
+        if not user_id:
+            return None
+
+        user = (
+            User.objects
+            .select_related(*related)
+            .get(id=user_id)
+        )
+
+        return user
 
     @staticmethod
     def clean_text(text: str) -> str:
@@ -65,6 +83,56 @@ class BaseView(View):
 
         return data
 
+    @staticmethod
+    def get_event(location: Location) -> Event | None:
+        player_limit = 1
+        event_cooldown = 5
+
+        # We want to overflow players into the same events vs race-creating individual events
+        # select_for_update() on the location row as a transaction to ensure only one event created
+        # at a time
+        with transaction.atomic():
+            # Find existing events with less than player_limit number of players
+            player_count = Count("entity_set", filter=Q(entity__entity_type='P'))
+            event_prefetch = Prefetch('event_set',
+                                      queryset=Event.objects.all()
+                                      .annotate(player_count=player_count)
+                                      .filter(active=True, player_count__lt=player_limit))
+            etemp_prefetch = Prefetch('enemytemplate_set')
+
+            location_locked = (Location.objects.select_for_update()
+                                .prefetch_related(event_prefetch, etemp_prefetch)
+                                .get(id=location.id))
+
+            events = location_locked.event_set.all()
+
+            if events:
+                # Just picking first available here
+                # Consider ordering or some other rank
+                return events[0]
+
+            # No suitable event found, so create a new one
+            delta = time.time() - location_locked.last_event
+            ticks = math.floor(delta)
+
+            # Doing a fixed 5-second interval between events for now
+            # could make this variable or have ways to force an event
+            if ticks < event_cooldown:
+                return None
+
+            event = Event.objects.create(location=location_locked, last_update=time.time())
+            etemps = location_locked.enemytemplate_set.all()
+
+            # Just spawn one of each enemy type for now
+            for enemy in etemps:
+                Entity.objects.create(name=enemy.name)
+
+            # todo create enemies here from location templates
+            # need to decide how we are handling enemy_template, entity optional FK to template?
+            # could then pull svg from there rather than storing a second time on entity
+
+            return event
+
 
 class UserProfileView(LoginRequiredMixin, TemplateView):
     template_name = 'profile.html'
@@ -85,12 +153,15 @@ class UserProfileView(LoginRequiredMixin, TemplateView):
         return redirect('profile')
 
 
-class SelectCharacter(LoginRequiredMixin, View):
+class SelectCharacter(BaseView):
     def post(self, request):
+        user = self.prep_user()
+        if not user:
+            return redirect('login')
+
         selected = request.POST.get('selected_id')
         character = Entity.objects.select_related('owner').only('owner__id').get(public_id=selected)
 
-        user = self.request.user
         if character:
             if character.owner == user:
                 with transaction.atomic():
@@ -119,30 +190,41 @@ class SelectCharacter(LoginRequiredMixin, View):
         return HttpResponse('Invalid selection', status=400)
 
 
-class GetPlayerCharacters(LoginRequiredMixin, TemplateView):
+class GetPlayerCharacters(BaseView):
     template_name = 'player_characters.html'
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        characters = Entity.objects.filter(owner=self.request.user).order_by('id')
-        context['characters'] = characters
+    def get(self, request):
+        user = self.prep_user()
+        if not user:
+            return redirect('login')
 
-        return context
+        characters = Entity.objects.filter(owner=user).order_by('id')
+        context = {'characters': characters}
+
+        return render(request, self.template_name, context)
 
 
-class CreateCharacter(LoginRequiredMixin, View):
+class CreateCharacter(BaseView):
     template_name = 'create_character.html'
 
     def get(self, request):
+        user = self.prep_user()
+        if not user:
+            return redirect('login')
+
         form = CharacterCreationForm()
         return render(request, self.template_name, {'form': form})
 
     def post(self, request):
+        user = self.prep_user()
+        if not user:
+            return redirect('login')
+
         form = CharacterCreationForm(request.POST)
 
         if form.is_valid():
             entity = form.save(commit=False)
-            entity.owner = self.request.user
+            entity.owner = user
             entity.entity_type = 'P'
             entity.health = entity.max_health
 
@@ -164,29 +246,30 @@ class CreateCharacter(LoginRequiredMixin, View):
         return render(request, self.template_name, {'form': form})
 
 
-class SelectWorld(LoginRequiredMixin, BaseView):
+class SelectWorld(BaseView):
     template_name = 'world.html'
 
     def get(self, request):
-        try:
-            user = (
-                User.objects
-                .select_related('entity__location__region__world')
-                .get(id=request.user.id)
-            )
+        user = self.prep_user(['entity__location__region__world'])
+        if not user:
+            return redirect('login')
 
-            form = WorldCreationForm()
-            world_name = None
-
-            if user.entity and user.entity.location:
-                world_name = user.entity.location.region.world.name
-
-            return render(request, self.template_name, {'world': world_name, 'form': form})
-
-        except Exception:
+        if not user.entity:
             return redirect('home')
 
+        form = WorldCreationForm()
+        world_name = None
+
+        if user.entity.location:
+            world_name = user.entity.location.region.world.name
+
+        return render(request, self.template_name, {'world': world_name, 'form': form})
+
     def post(self, request):
+        user = self.prep_user(['entity__location'])
+        if not user:
+            return redirect('login')
+
         form = WorldCreationForm(request.POST)
 
         if form.is_valid():
@@ -219,9 +302,8 @@ class SelectWorld(LoginRequiredMixin, BaseView):
 
                     world.save()
 
-                character = request.user.entity
-                character.location = world.start_location
-                character.save(update_fields=['location'])
+                user.entity.location = world.start_location
+                user.entity.save(update_fields=['location'])
 
             if request.headers.get('HX-Request'):
                 response = HttpResponse(status=204)
@@ -248,17 +330,9 @@ class Map(BaseView):
         html = "".join([render_to_string(partial, context) for partial in partials])
         return HttpResponse(html)
 
-    def prep_user(self):
-        user = (User.objects
-                .select_related('entity__location__region__world')
-                .get(id=self.request.user.id))
-
-        return user
-
     def get(self, request):
-        user = self.prep_user()
-
-        if not user.is_authenticated:
+        user = self.prep_user(['entity__location__region__world', 'entity__event'])
+        if not user:
             return redirect('login')
 
         context = {}
@@ -292,6 +366,9 @@ class Map(BaseView):
                     # just rendering svgs and enemy names for now
                     # placeholder enemy rendering
                     if user.entity.new_location:
+
+                        # TODO event processing goes here
+
                         enemy_svgs = EnemyTemplate.objects.filter(location=user.entity.location)
                         context['enemy_svgs'] = enemy_svgs
                         partials.append('partials/event.html')
@@ -311,6 +388,7 @@ class Map(BaseView):
             else:
                 context['travel'] = self.get_travel_data(user)
 
+                # TODO event check block
                 # placeholder enemy rendering
                 enemy_svgs = EnemyTemplate.objects.filter(location=user.entity.location)
                 context['enemy_svgs'] = enemy_svgs
@@ -335,28 +413,37 @@ class Map(BaseView):
             return redirect('home')
 
 
-class Travel(LoginRequiredMixin, BaseView):
+class Travel(BaseView):
     template = 'partials/travel.html'
 
     def post(self, request):
+        user = self.prep_user(['entity__location__region', 'entity__event__location'])
+        if not user:
+            return redirect('login')
+
         context = {}
 
         selected_location = (Location.objects.select_related('region__world')
                              .only('region', 'last_event', 'world')
                              .get(public_id=request.POST['public_id']))
 
-        user = (User.objects.select_related('entity__location__region__world').get(id=self.request.user.id))
-
         if selected_location != user.entity.location:
             if selected_location.region ==  user.entity.location.region:
                 with transaction.atomic():
+                    # Set event timer for unvisited location
                     if not selected_location.last_event:
                         selected_location.last_event = time.time()
                         selected_location.save(update_fields=['last_event'])
 
+                    # Remove event if we left the event location
+                    if user.entity.event and (user.entity.event.location != selected_location):
+                        user.entity.event = None
+
                     user.entity.location = selected_location
                     user.entity.new_location = True
-                    user.entity.save(update_fields=['location', 'new_location'])
+                    user.entity.save(update_fields=['location', 'new_location', 'event'])
+
+                    # TODO event check block
 
                 context['travel'] = self.get_travel_data(user)
 
@@ -370,27 +457,16 @@ class Travel(LoginRequiredMixin, BaseView):
 class RegionChat(BaseView):
     template = 'partials/region_chat.html'
 
-    def prep_user(self):
-        user = (
-            User.objects
-            .select_related('entity__location__region')
-            .get(id=self.request.user.id)
-        )
-
-        return user
-
     def post(self, request):
-        if not self.request.user.is_authenticated:
+        user = self.prep_user(['entity__location__region',])
+        if not user:
             return redirect('login')
 
         context = {}
+        region = user.entity.location.region
 
         msg = request.POST.get('region-chat-msg', '')
         msg_cleaned = self.clean_text(text=msg)
-
-        user = self.prep_user()
-        region = user.entity.location.region
-
         RegionChatMessage.objects.create(message=msg_cleaned, user=user, region=region)
         messages = self.get_region_messages(region=region)
 

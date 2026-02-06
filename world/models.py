@@ -58,13 +58,11 @@ class Location(models.Model):
 
 class Event(models.Model):
     public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
-    size = models.IntegerField(null=False, default=10)
-    active = models.BooleanField(default=True)
-    last_update = models.DateTimeField(auto_now=True)
-    level = models.IntegerField('level', null=False, blank=False, default=1)
+    size = models.IntegerField(null=False, default=100)
+    active = models.BooleanField(default=True, db_index=True)
+    last_update = models.FloatField(default=0)
 
     location = models.ForeignKey(Location, on_delete=models.CASCADE)
-
 
     # self.combat_log_buffer = []
     # self.combat_log = []
@@ -74,7 +72,7 @@ class Event(models.Model):
     # self.move_buffer = []
 
     def __str__(self):
-        return f'{self.location.name} {str(self.pk)}'
+        return f'{self.location.name} Event {str(self.pk)}'
 
 
 class Entity(models.Model):
@@ -99,11 +97,11 @@ class Entity(models.Model):
     new_status = models.BooleanField(default=False)
     new_location = models.BooleanField(default=False)
 
-    target = models.ForeignKey('Entity', null=True, blank=True, on_delete=models.SET_NULL, related_name='targeted_by')
+    target = models.ForeignKey('Entity', null=True, blank=True, on_delete=models.SET_NULL)
     owner = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='user_characters')
     active = models.OneToOneField(User, null=True, blank=True, on_delete=models.CASCADE)
-    event = models.ForeignKey(Event, null=True, blank=True, on_delete=models.SET_NULL, related_name='event_entities')
-    location = models.ForeignKey(Location, null=True, blank=True, on_delete=models.SET_NULL, related_name='location_entities')
+    event = models.ForeignKey(Event, null=True, blank=True, on_delete=models.SET_NULL)
+    location = models.ForeignKey(Location, null=True, blank=True, on_delete=models.SET_NULL)
 
     @property
     def health_perc(self):
