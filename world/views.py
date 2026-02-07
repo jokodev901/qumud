@@ -66,7 +66,7 @@ class BaseView(View):
 
     @staticmethod
     def get_travel_data(user: User) -> dict:
-        data = {}
+        context = {}
         current_location = user.entity.location
         region = current_location.region
         world = region.world
@@ -75,13 +75,13 @@ class BaseView(View):
         towns = [location for location in locations if location.location_type == 'T']
         dungeons = [location for location in locations if location.location_type == 'D']
 
-        data['towns'] = towns
-        data['dungeons'] = dungeons
-        data['region'] = region
-        data['current_location'] = current_location
-        data['world'] = world
+        context['towns'] = towns
+        context['dungeons'] = dungeons
+        context['region'] = region
+        context['current_location'] = current_location
+        context['world'] = world
 
-        return data
+        return context
 
     @staticmethod
     def get_event(location: Location) -> Event | None:
@@ -93,7 +93,7 @@ class BaseView(View):
         # at a time
         with transaction.atomic():
             # Find existing events with less than player_limit number of players
-            player_count = Count("entity_set", filter=Q(entity__entity_type='P'))
+            player_count = Count("entity", filter=Q(entity__entity_type='P'))
             event_prefetch = Prefetch('event_set',
                                       queryset=Event.objects.all()
                                       .annotate(player_count=player_count)
@@ -125,13 +125,43 @@ class BaseView(View):
 
             # Just spawn one of each enemy type for now
             for enemy in etemps:
-                Entity.objects.create(name=enemy.name)
-
-            # todo create enemies here from location templates
-            # need to decide how we are handling enemy_template, entity optional FK to template?
-            # could then pull svg from there rather than storing a second time on entity
+                Entity.objects.create(template=enemy, event=event, name=enemy.name, entity_type='E',
+                                      max_health=enemy.max_health, health=enemy.max_health,
+                                      attack_range=enemy.attack_range, attack_damage=enemy.attack_damage,
+                                      speed=enemy.speed, initiative=enemy.initiative, max_targets=1, level=1)
 
             return event
+
+    @staticmethod
+    def get_event_data(user: User, full: bool = False) -> dict:
+        context = {}
+
+        if user.entity.location.location_type == 'D':
+            if user.entity.new_location or (not user.entity.event) or full:
+                user.entity.new_location = False
+                event = BaseView.get_event(user.entity.location)
+
+                if event:
+                    user.entity.event = event
+                    enemies = Entity.objects.select_related('template').filter(event=event, entity_type='E')
+                    players = Entity.objects.filter(event=event, entity_type='P').exclude(pk=user.entity.id)
+                    context['enemies'] = enemies
+                    context['players'] = players
+
+                user.entity.save(update_fields=['event', 'new_location'])
+
+        # If we were in an event and moved to a town, return empty enemy data and updated players in town
+        elif user.entity.location.location_type == 'T':
+            if user.entity.new_location or (not user.entity.event) or full:
+                user.entity.new_location = False
+                user.entity.event = None # currently assuming no events in town, update this if that changes
+                players = (Entity.objects.filter(location=user.entity.location, entity_type='P')
+                           .exclude(pk=user.entity.id))
+                context['players'] = players
+
+                user.entity.save(update_fields=['event', 'new_location'])
+
+        return context
 
 
 class UserProfileView(LoginRequiredMixin, TemplateView):
@@ -343,11 +373,15 @@ class Map(BaseView):
                 delta = time.time() - user.last_update
                 ticks = math.floor(delta)
 
-                if ticks > 0:
+                if ticks >= 1:
+                    user.last_update = time.time()
+                    user.save(update_fields=['last_update'])
+
                     partials = []
 
                     recent_messages = self.get_region_messages(region=user.entity.location.region)
                     region_players = self.get_region_players(region=user.entity.location.region)
+                    event_data = self.get_event_data(user=user)
 
                     if user.entity.new_status:
                         context['character'] = user.entity
@@ -362,22 +396,9 @@ class Map(BaseView):
                         context['region_players'] = region_players
                         partials.append('partials/region_players.html')
 
-                    # Placeholder event processing
-                    # just rendering svgs and enemy names for now
-                    # placeholder enemy rendering
-                    if user.entity.new_location:
-
-                        # TODO event processing goes here
-
-                        enemy_svgs = EnemyTemplate.objects.filter(location=user.entity.location)
-                        context['enemy_svgs'] = enemy_svgs
+                    if event_data:
+                        context['event'] = event_data
                         partials.append('partials/event.html')
-                        user.entity.new_location = False
-                        user.entity.save(update_fields=['new_location'])
-
-                    # Final time update
-                    user.last_update = time.time()
-                    user.save(update_fields=['last_update'])
 
                     if partials:
                         return self.render_partials(partials, context)
@@ -386,16 +407,10 @@ class Map(BaseView):
 
             # Render full template ( initial load )
             else:
-                context['travel'] = self.get_travel_data(user)
-
-                # TODO event check block
-                # placeholder enemy rendering
-                enemy_svgs = EnemyTemplate.objects.filter(location=user.entity.location)
-                context['enemy_svgs'] = enemy_svgs
-
                 recent_messages = self.get_region_messages(region=user.entity.location.region)
                 region_players = self.get_region_players(region=user.entity.location.region)
-
+                context['travel'] = self.get_travel_data(user=user)
+                context['event'] = self.get_event_data(user=user, full=True)
                 context['region_players'] = region_players
                 context['messages'] = recent_messages
                 context['character'] = user.entity
@@ -414,7 +429,12 @@ class Map(BaseView):
 
 
 class Travel(BaseView):
-    template = 'partials/travel.html'
+    def render_partials(self, partials, context):
+        """
+        Takes a list of template paths and returns a combined HttpResponse.
+        """
+        html = "".join([render_to_string(partial, context) for partial in partials])
+        return HttpResponse(html)
 
     def post(self, request):
         user = self.prep_user(['entity__location__region', 'entity__event__location'])
@@ -428,7 +448,7 @@ class Travel(BaseView):
                              .get(public_id=request.POST['public_id']))
 
         if selected_location != user.entity.location:
-            if selected_location.region ==  user.entity.location.region:
+            if selected_location.region == user.entity.location.region:
                 with transaction.atomic():
                     # Set event timer for unvisited location
                     if not selected_location.last_event:
@@ -441,13 +461,14 @@ class Travel(BaseView):
 
                     user.entity.location = selected_location
                     user.entity.new_location = True
-                    user.entity.save(update_fields=['location', 'new_location', 'event'])
+                    user.entity.save(update_fields=['location', 'new_location'])
 
-                    # TODO event check block
+                # Update and get event data
+                context['event'] = self.get_event_data(user=user, full=True)
+                context['travel'] = self.get_travel_data(user=user)
+                templates = ('partials/travel.html', 'partials/event.html')
 
-                context['travel'] = self.get_travel_data(user)
-
-                return render(request, self.template, context)
+                return self.render_partials(templates, context)
 
             return HttpResponse('Invalid selection', status=400)
 

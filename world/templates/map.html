@@ -13,13 +13,16 @@
                     <div id="event-card-swap">
                         <div class="event-graphic position-relative">
                             <span class="text-muted italic">Graphic Placeholder</span>
-                            {% for svg in enemy_svgs %}
-                            {{ svg.svg|safe }}
+                            {% for enemy in event.enemies %}
+                            {{ enemy.template.svg|safe }}
                             {% endfor %}
                         </div>
                         <div class="scroll-window mb-3" style="height: 250px; font-size: 0.85rem;">
-                            {% for svg in enemy_svgs %}
-                            <div class="text-success">You encountered a {{ svg.name }}</div>
+                            {% for enemy in event.enemies %}
+                            <div class="text-success">You encountered a lvl {{ enemy.level }} {{ enemy.name }}</div>
+                            {% endfor %}
+                            {% for player in event.players %}
+                            <div class="text-white">You encountered player {{ player.name }}</div>
                             {% endfor %}
                         </div>
                     </div>

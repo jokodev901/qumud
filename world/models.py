@@ -75,6 +75,23 @@ class Event(models.Model):
         return f'{self.location.name} Event {str(self.pk)}'
 
 
+class EnemyTemplate(models.Model):
+    svg = models.TextField()
+    name = models.CharField('Name', max_length=32)
+    max_health = models.IntegerField(default=1)
+    attack_range = models.IntegerField(default=1)
+    attack_damage = models.IntegerField(default=1)
+    speed = models.IntegerField(default=1)
+    initiative = models.IntegerField(default=0)
+    max_targets = models.IntegerField(default=1)
+    level = models.IntegerField(default=1)
+
+    location = models.ForeignKey(Location, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.name
+
+
 class Entity(models.Model):
     ENTITY_TYPES = (
         ('P', 'Player'),
@@ -102,6 +119,7 @@ class Entity(models.Model):
     active = models.OneToOneField(User, null=True, blank=True, on_delete=models.CASCADE)
     event = models.ForeignKey(Event, null=True, blank=True, on_delete=models.SET_NULL)
     location = models.ForeignKey(Location, null=True, blank=True, on_delete=models.SET_NULL)
+    template = models.ForeignKey(EnemyTemplate,  null=True, blank=True, on_delete=models.CASCADE)
 
     @property
     def health_perc(self):
@@ -112,23 +130,6 @@ class Entity(models.Model):
 
     class Meta:
         verbose_name_plural = 'entities'
-
-
-class EnemyTemplate(models.Model):
-    svg = models.TextField()
-    name = models.CharField('Name', max_length=32)
-    max_health = models.IntegerField(default=1)
-    attack_range = models.IntegerField(default=1)
-    attack_damage = models.IntegerField(default=1)
-    speed = models.IntegerField(default=1)
-    initiative = models.IntegerField(default=0)
-    max_targets = models.IntegerField(default=1)
-    level = models.IntegerField(default=1)
-
-    location = models.ForeignKey(Location, on_delete=models.CASCADE)
-
-    def __str__(self):
-        return self.name
 
 
 class RegionChatMessage(models.Model):
