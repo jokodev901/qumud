@@ -1,10 +1,11 @@
 from django import forms
-from .models import Entity, World
+from .models import Player, World
 
 
 class CharacterCreationForm(forms.ModelForm):
     class Meta:
-        model = Entity
+        model = Player
+
         fields = ['name', 'max_health', 'attack_range', 'attack_damage', 'speed', 'initiative', 'max_targets']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter character name...'}),
