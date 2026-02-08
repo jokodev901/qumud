@@ -39,21 +39,37 @@ class Region(models.Model):
 
 class Location(models.Model):
     LOCATION_TYPES = (
-        ('D', 'Dungeon'),
         ('T', 'Town'),
+        ('D', 'Dungeon'),
     )
 
     public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     name = models.CharField('Location name', max_length=64)
-    location_type = models.CharField('Location type', max_length=1, choices=LOCATION_TYPES)
     level = models.IntegerField('level', default=1)
-    last_event = models.FloatField(null=True, blank=True)
+    last_event = models.FloatField(null=True, blank=True, default=0)
+    type = models.CharField('Location type', max_length=1, choices=LOCATION_TYPES)
+    max_players = models.IntegerField(default=1)
 
     region = models.ForeignKey(Region, on_delete=models.CASCADE)
 
-
     def __str__(self):
         return self.name
+
+
+class Dungeon(Location):
+    spawn_rate = models.IntegerField(default=5)
+
+    def save(self, *args, **kwargs):
+        self.type = 'D'
+        self.max_players = 5
+        super().save(*args, **kwargs)
+
+
+class Town(Location):
+    def save(self, *args, **kwargs):
+        self.type = 'T'
+        self.max_players = 100
+        super().save(*args, **kwargs)
 
 
 class Event(models.Model):
@@ -95,8 +111,7 @@ class EnemyTemplate(models.Model):
 class Entity(models.Model):
     ENTITY_TYPES = (
         ('P', 'Player'),
-        ('N', 'NPC'),
-        ('E', 'Enemy')
+        ('E', 'Enemy'),
     )
 
     # Field types for conditional triggers
@@ -105,8 +120,8 @@ class Entity(models.Model):
     LOCATION_FIELDS = {'location',}
 
     public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
-    entity_type = models.CharField(max_length=1, choices=ENTITY_TYPES, db_index=True)
     name = models.CharField('Name', max_length=32)
+    type = models.CharField('Entity type', max_length=1, choices=ENTITY_TYPES)
 
     # Hidden combat fields that do not require display
     attack_range = models.IntegerField(default=1)
@@ -121,22 +136,28 @@ class Entity(models.Model):
     level = models.IntegerField(default=1)
     position = models.IntegerField(default=None, null=True, db_index=True)
 
+    # References
+    target = models.ForeignKey('Entity', null=True, blank=True, on_delete=models.SET_NULL)
+
+    @property
+    def health_perc(self):
+        return math.floor((self.max_health / self.health) * 100)
+
+    def __str__(self):
+        return self.name
+
+
+class Player(Entity):
     # State flags
     new_status = models.BooleanField(default=False) # Does the status pane need to be updated?
     new_location = models.BooleanField(default=False) # Do we need to do new location operations?
     new_event = models.BooleanField(default=False) # Do we need new event data?
 
-    # References
-    target = models.ForeignKey('Entity', null=True, blank=True, on_delete=models.SET_NULL)
+    # Relationships
+    location = models.ForeignKey(Location, null=True, blank=True, on_delete=models.SET_NULL)
     owner = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='user_characters')
     active = models.OneToOneField(User, null=True, blank=True, on_delete=models.CASCADE)
     event = models.ForeignKey(Event, null=True, blank=True, on_delete=models.SET_NULL)
-    location = models.ForeignKey(Location, null=True, blank=True, on_delete=models.SET_NULL)
-    template = models.ForeignKey(EnemyTemplate,  null=True, blank=True, on_delete=models.CASCADE)
-
-    @property
-    def health_perc(self):
-        return math.floor((self.max_health / self.health) * 100)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -145,37 +166,71 @@ class Entity(models.Model):
         self._previous_event_id = self.event_id
 
     def save(self, *args, **kwargs):
-        update_fields = kwargs.get('update_fields')
-        # push an updates to fields or related models when relevant field changes are made
+        if not self.id:
+            self.type = 'P'
 
-        if update_fields is not None:
-            update_set = set(update_fields)
+        else:
+            update_fields = kwargs.get('update_fields')
+            # push an updates to fields or related models when relevant field changes are made
 
-            event_update = not update_set.isdisjoint(self.EVENT_FIELDS)
-            status_update = not update_set.isdisjoint(self.STATUS_FIELDS)
-            location_update = not update_set.isdisjoint(self.LOCATION_FIELDS)
+            if update_fields is not None:
+                update_set = set(update_fields)
 
-            if event_update or location_update:
-                event_ids = filter(None, (self._previous_event_id, self.event_id))
-                Entity.objects.filter(event_id__in=event_ids, entity_type='P').update(new_event=True)
+                event_update = not update_set.isdisjoint(self.EVENT_FIELDS)
+                status_update = not update_set.isdisjoint(self.STATUS_FIELDS)
+                location_update = not update_set.isdisjoint(self.LOCATION_FIELDS)
 
-            if location_update:
-                self.new_location = True
-                update_set.add('new_location')
+                if event_update or location_update:
+                    event_ids = filter(None, (self._previous_event_id, self.event_id))
+                    Player.objects.filter(event_id__in=event_ids).update(new_event=True)
 
-            if status_update:
-                self.new_status = True
-                update_set.add('new_status')
+                if location_update:
+                    self.new_location = True
+                    update_set.add('new_location')
 
-            kwargs['update_fields'] = update_set
+                if status_update:
+                    self.new_status = True
+                    update_set.add('new_status')
+
+                kwargs['update_fields'] = update_set
 
         super().save(*args, **kwargs)
 
-    def __str__(self):
-        return self.name
 
-    class Meta:
-        verbose_name_plural = 'entities'
+class Enemy(Entity):
+    # State flags
+    new_event = models.BooleanField(default=False) # Do we need new event data?
+
+    # Relationships
+    template = models.ForeignKey(EnemyTemplate,  null=True, blank=True, on_delete=models.CASCADE)
+    event = models.ForeignKey(Event, null=True, blank=True, on_delete=models.CASCADE)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # We may need to update previous relationships, so set those ids here
+        self._previous_event_id = self.event_id
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.type = 'E'
+
+        else:
+            update_fields = kwargs.get('update_fields')
+            # push an updates to fields or related models when relevant field changes are made
+
+            if update_fields is not None:
+                update_set = set(update_fields)
+
+                event_update = not update_set.isdisjoint(self.EVENT_FIELDS)
+
+                if event_update:
+                    event_ids = filter(None, (self._previous_event_id, self.event_id))
+                    Player.objects.filter(event_id__in=event_ids).update(new_event=True)
+
+                kwargs['update_fields'] = update_set
+
+        super().save(*args, **kwargs)
 
 
 class RegionChatMessage(models.Model):
