@@ -29,7 +29,7 @@ class Region(models.Model):
     public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     name = models.CharField('region name', max_length=32)
     biome = models.CharField('biome', max_length=1, choices=REGION_BIOMES)
-    level = models.IntegerField('level', null=False, blank=False, default=1)
+    level = models.IntegerField('level', default=1)
 
     world = models.ForeignKey(World, on_delete=models.CASCADE)
 
@@ -46,7 +46,7 @@ class Location(models.Model):
     public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     name = models.CharField('Location name', max_length=64)
     location_type = models.CharField('Location type', max_length=1, choices=LOCATION_TYPES)
-    level = models.IntegerField('level', null=False, blank=False, default=1)
+    level = models.IntegerField('level', default=1)
     last_event = models.FloatField(null=True, blank=True)
 
     region = models.ForeignKey(Region, on_delete=models.CASCADE)
@@ -58,7 +58,7 @@ class Location(models.Model):
 
 class Event(models.Model):
     public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
-    size = models.IntegerField(null=False, default=100)
+    size = models.IntegerField(default=100)
     active = models.BooleanField(default=True, db_index=True)
     last_update = models.FloatField(default=0)
 
