@@ -84,82 +84,84 @@ class BaseView(View):
         return context
 
     @staticmethod
-    def get_event(location: Location) -> Event | None:
-        player_limit = 1
+    def get_or_create_event(location: Location) -> Event | None:
+        player_limit = 2
         event_cooldown = 5
 
         # We want to overflow players into the same events vs race-creating individual events
         # select_for_update() on the location row as a transaction to ensure only one event created
         # at a time
-        with transaction.atomic():
-            # Find existing events with less than player_limit number of players
-            player_count = Count("entity", filter=Q(entity__entity_type='P'))
-            event_prefetch = Prefetch('event_set',
-                                      queryset=Event.objects.all()
-                                      .annotate(player_count=player_count)
-                                      .filter(active=True, player_count__lt=player_limit))
-            etemp_prefetch = Prefetch('enemytemplate_set')
 
-            location_locked = (Location.objects.select_for_update()
-                                .prefetch_related(event_prefetch, etemp_prefetch)
-                                .get(id=location.id))
+        # Find existing events with less than player_limit number of players
+        player_count = Count("entity", filter=Q(entity__entity_type='P'))
+        event_prefetch = Prefetch('event_set',
+                                  queryset=Event.objects.all()
+                                  .annotate(player_count=player_count)
+                                  .filter(active=True, player_count__lt=player_limit))
+        etemp_prefetch = Prefetch('enemytemplate_set')
 
-            events = location_locked.event_set.all()
+        location_locked = (Location.objects.select_for_update()
+                            .prefetch_related(event_prefetch, etemp_prefetch)
+                            .get(id=location.id))
 
-            if events:
-                # Just picking first available here
-                # Consider ordering or some other rank
-                return events[0]
+        events = location_locked.event_set.all()
 
-            # No suitable event found, so create a new one
-            delta = time.time() - location_locked.last_event
-            ticks = math.floor(delta)
+        if events:
+            # Just picking first available here
+            # Consider ordering or some other rank
+            return events[0]
 
-            # Doing a fixed 5-second interval between events for now
-            # could make this variable or have ways to force an event
-            if ticks < event_cooldown:
-                return None
+        # No suitable event found, so create a new one
+        delta = time.time() - location_locked.last_event
+        ticks = math.floor(delta)
 
-            event = Event.objects.create(location=location_locked, last_update=time.time())
-            etemps = location_locked.enemytemplate_set.all()
+        # Doing a fixed 5-second interval between events for now
+        # could make this variable or have ways to force an event
+        if ticks < event_cooldown:
+            return None
 
-            # Just spawn one of each enemy type for now
-            for enemy in etemps:
-                Entity.objects.create(template=enemy, event=event, name=enemy.name, entity_type='E',
-                                      max_health=enemy.max_health, health=enemy.max_health,
-                                      attack_range=enemy.attack_range, attack_damage=enemy.attack_damage,
-                                      speed=enemy.speed, initiative=enemy.initiative, max_targets=1, level=1)
+        event = Event.objects.create(location=location_locked, last_update=time.time())
+        etemps = location_locked.enemytemplate_set.all()
 
-            return event
+        # Just spawn one of each enemy type for now
+        for enemy in etemps:
+            Entity.objects.create(template=enemy, event=event, name=enemy.name, entity_type='E',
+                                  max_health=enemy.max_health, health=enemy.max_health,
+                                  attack_range=enemy.attack_range, attack_damage=enemy.attack_damage,
+                                  speed=enemy.speed, initiative=enemy.initiative, max_targets=1, level=1)
+
+        return event
 
     @staticmethod
-    def get_event_data(user: User, full: bool = False) -> dict:
+    def process_event_data(user: User, full: bool = False) -> dict:
         context = {}
+        event = None
 
-        if user.entity.location.location_type == 'D':
-            if user.entity.new_location or (not user.entity.event) or full:
-                user.entity.new_location = False
-                event = BaseView.get_event(user.entity.location)
+        with transaction.atomic():
+            if user.entity.location.location_type == 'D':
+                if not user.entity.event:
+                    event = BaseView.get_or_create_event(user.entity.location)
+
+                    if event:
+                        user.entity.event = event
+                        user.entity.save(update_fields=['event', ])
+
+                elif user.entity.new_event or full:
+                    event = user.entity.event
 
                 if event:
-                    user.entity.event = event
                     enemies = Entity.objects.select_related('template').filter(event=event, entity_type='E')
                     players = Entity.objects.filter(event=event, entity_type='P').exclude(pk=user.entity.id)
                     context['enemies'] = enemies
                     context['players'] = players
 
-                user.entity.save(update_fields=['event', 'new_location'])
-
-        # If we were in an event and moved to a town, return empty enemy data and updated players in town
-        elif user.entity.location.location_type == 'T':
-            if user.entity.new_location or (not user.entity.event) or full:
-                user.entity.new_location = False
-                user.entity.event = None # currently assuming no events in town, update this if that changes
-                players = (Entity.objects.filter(location=user.entity.location, entity_type='P')
-                           .exclude(pk=user.entity.id))
-                context['players'] = players
-
-                user.entity.save(update_fields=['event', 'new_location'])
+            # If we were in an event and moved to a town, return empty enemy data and updated players in town
+            # currently assuming no events in town, update this if that changes
+            elif user.entity.location.location_type == 'T':
+                if user.entity.new_location or full:
+                    players = (Entity.objects.filter(location=user.entity.location, entity_type='P')
+                               .exclude(pk=user.entity.id))
+                    context['players'] = players
 
         return context
 
@@ -375,13 +377,12 @@ class Map(BaseView):
 
                 if ticks >= 1:
                     user.last_update = time.time()
-                    user.save(update_fields=['last_update'])
 
                     partials = []
 
                     recent_messages = self.get_region_messages(region=user.entity.location.region)
                     region_players = self.get_region_players(region=user.entity.location.region)
-                    event_data = self.get_event_data(user=user)
+                    event_data = self.process_event_data(user=user)
 
                     if user.entity.new_status:
                         context['character'] = user.entity
@@ -400,6 +401,26 @@ class Map(BaseView):
                         context['event'] = event_data
                         partials.append('partials/event.html')
 
+                    with transaction.atomic():
+                        entity_updates = []
+
+                        if user.entity.new_location:
+                            user.entity.new_location = False
+                            entity_updates.append('new_location')
+
+                        if user.entity.new_status:
+                            user.entity.new_status = False
+                            entity_updates.append('new_status')
+
+                        if user.entity.new_event:
+                            user.entity.new_event = False
+                            entity_updates.append('new_event')
+
+                        if entity_updates:
+                            user.entity.save(update_fields=entity_updates)
+
+                        user.save(update_fields=['last_update'])
+
                     if partials:
                         return self.render_partials(partials, context)
 
@@ -407,20 +428,36 @@ class Map(BaseView):
 
             # Render full template ( initial load )
             else:
+                user.last_update = time.time()
+
                 recent_messages = self.get_region_messages(region=user.entity.location.region)
                 region_players = self.get_region_players(region=user.entity.location.region)
                 context['travel'] = self.get_travel_data(user=user)
-                context['event'] = self.get_event_data(user=user, full=True)
+                context['event'] = self.process_event_data(user=user, full=True)
                 context['region_players'] = region_players
                 context['messages'] = recent_messages
                 context['character'] = user.entity
                 context['character_health_perc'] = user.entity.health_perc
 
-                user.last_update = time.time()
-                user.entity.new_location = False
+                with transaction.atomic():
+                    entity_updates = []
 
-                user.save(update_fields=['last_update'])
-                user.entity.save(update_fields=['new_location'])
+                    if user.entity.new_location:
+                        user.entity.new_location = False
+                        entity_updates.append('new_location')
+
+                    if user.entity.new_status:
+                        user.entity.new_status = False
+                        entity_updates.append('new_status')
+
+                    if user.entity.new_event:
+                        user.entity.new_event = False
+                        entity_updates.append('new_event')
+
+                    if entity_updates:
+                        user.entity.save(update_fields=entity_updates)
+
+                    user.save(update_fields=['last_update'])
 
                 return render(request, self.template_name, context)
 
@@ -442,6 +479,7 @@ class Travel(BaseView):
             return redirect('login')
 
         context = {}
+        update_fields = []
 
         selected_location = (Location.objects.select_related('region__world')
                              .only('region', 'last_event', 'world')
@@ -458,13 +496,15 @@ class Travel(BaseView):
                     # Remove event if we left the event location
                     if user.entity.event and (user.entity.event.location != selected_location):
                         user.entity.event = None
+                        update_fields.append('event')
 
                     user.entity.location = selected_location
-                    user.entity.new_location = True
-                    user.entity.save(update_fields=['location', 'new_location'])
+                    update_fields.append('location')
+
+                    user.entity.save(update_fields=update_fields)
 
                 # Update and get event data
-                context['event'] = self.get_event_data(user=user, full=True)
+                context['event'] = self.process_event_data(user=user, full=True)
                 context['travel'] = self.get_travel_data(user=user)
                 templates = ('partials/travel.html', 'partials/event.html')
 

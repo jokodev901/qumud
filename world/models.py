@@ -99,21 +99,34 @@ class Entity(models.Model):
         ('E', 'Enemy')
     )
 
+    # Field types for conditional triggers
+    EVENT_FIELDS = {'health', 'level', 'position', 'event',}
+    STATUS_FIELDS = {'max_health', 'health', 'level',}
+    LOCATION_FIELDS = {'location',}
+
     public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     entity_type = models.CharField(max_length=1, choices=ENTITY_TYPES, db_index=True)
     name = models.CharField('Name', max_length=32)
-    max_health = models.IntegerField(default=1)
-    health = models.IntegerField(default=1)
+
+    # Hidden combat fields that do not require display
     attack_range = models.IntegerField(default=1)
     attack_damage = models.IntegerField(default=1)
     speed = models.IntegerField(default=1)
     initiative = models.IntegerField(default=0)
     max_targets = models.IntegerField(default=1)
-    position = models.IntegerField(default=None, null=True, db_index=True)
-    level = models.IntegerField(default=1)
-    new_status = models.BooleanField(default=False)
-    new_location = models.BooleanField(default=False)
 
+    # Combat fields that require display updates
+    max_health = models.IntegerField(default=1)
+    health = models.IntegerField(default=1)
+    level = models.IntegerField(default=1)
+    position = models.IntegerField(default=None, null=True, db_index=True)
+
+    # State flags
+    new_status = models.BooleanField(default=False) # Does the status pane need to be updated?
+    new_location = models.BooleanField(default=False) # Do we need to do new location operations?
+    new_event = models.BooleanField(default=False) # Do we need new event data?
+
+    # References
     target = models.ForeignKey('Entity', null=True, blank=True, on_delete=models.SET_NULL)
     owner = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='user_characters')
     active = models.OneToOneField(User, null=True, blank=True, on_delete=models.CASCADE)
@@ -124,6 +137,39 @@ class Entity(models.Model):
     @property
     def health_perc(self):
         return math.floor((self.max_health / self.health) * 100)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # We may need to update previous relationships, so set those ids here
+        self._previous_event_id = self.event_id
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get('update_fields')
+        # push an updates to fields or related models when relevant field changes are made
+
+        if update_fields is not None:
+            update_set = set(update_fields)
+
+            event_update = not update_set.isdisjoint(self.EVENT_FIELDS)
+            status_update = not update_set.isdisjoint(self.STATUS_FIELDS)
+            location_update = not update_set.isdisjoint(self.LOCATION_FIELDS)
+
+            if event_update or location_update:
+                event_ids = filter(None, (self._previous_event_id, self.event_id))
+                Entity.objects.filter(event_id__in=event_ids, entity_type='P').update(new_event=True)
+
+            if location_update:
+                self.new_location = True
+                update_set.add('new_location')
+
+            if status_update:
+                self.new_status = True
+                update_set.add('new_status')
+
+            kwargs['update_fields'] = update_set
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
