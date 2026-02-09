@@ -17,7 +17,7 @@ from rest_framework.authtoken.models import Token
 
 from core.utils import generators
 from authentication.models import User
-from .models import (World, Region, Location, Town, Dungeon, RegionChatMessage, Entity, Player, Enemy, EnemyTemplate,
+from .models import (World, Region, Location, Town, Dungeon, RegionChatMessage, Player, Enemy, EnemyTemplate,
                      Event)
 from .forms import CharacterCreationForm, WorldCreationForm
 
@@ -51,16 +51,27 @@ class BaseView(View):
         return cleaned.strip()
 
     @staticmethod
-    def get_region_messages(region: Region, count: int = 50):
-        messages = (RegionChatMessage.objects.all().select_related('user')
-                    .filter(region=region).order_by('-sent_at'))[:count]
+    def get_region_messages(user: User, count: int = 50, full: bool = False):
+        """
+        we have to select either way, so lets get our ordered candidate messages, but only return them
+        if the latest one has a sent_at >= user.last_refresh
+        """
 
-        return messages
+        messages = (RegionChatMessage.objects.all()
+                    .select_related('user')
+                    .filter(region=user.player.location.region, sent_at__gte=time.time()-600)
+                    .order_by('-sent_at'))[:count]
+
+        if messages:
+            if (messages[0].sent_at >= user.last_refresh) or full:
+                return messages
+
+        return None
 
     @staticmethod
     def get_region_players(region: Region, timeout: int = 10):
         players = (User.objects.all()
-                   .filter(player__location__region=region, last_update__gte=time.time() - timeout)
+                   .filter(player__location__region=region, last_refresh__gte=time.time() - timeout)
                    .order_by('alias'))
 
         return players
@@ -90,51 +101,51 @@ class BaseView(View):
         # select_for_update() on the location row as a transaction to ensure only one event created
         # at a time
 
-        # Find existing events with less than player_limit number of players
-        prefetch_list = []
-        # player_count = Count("entity", filter=Q(entity__type='P'))
-        player_count = Count("player")
-        event_prefetch = Prefetch('event_set',
-                                  queryset=Event.objects.all()
-                                  .annotate(player_count=player_count)
-                                  .filter(active=True, player_count__lt=location.max_players))
-        prefetch_list.append(event_prefetch)
+        with transaction.atomic():
+            # Find existing events with less than player_limit number of players
+            prefetch_list = []
+            player_count = Count("player")
+            event_prefetch = Prefetch('event_set',
+                                      queryset=Event.objects.all()
+                                      .annotate(player_count=player_count)
+                                      .filter(active=True, player_count__lt=location.max_players))
+            prefetch_list.append(event_prefetch)
 
-        if location.type == 'D':
-            prefetch_list.append(Prefetch('enemytemplate_set'))
+            if location.type == 'D':
+                prefetch_list.append(Prefetch('enemytemplate_set'))
 
-        location_locked = (Location.objects.select_for_update()
-                            .prefetch_related(*prefetch_list)
-                            .get(id=location.id))
+            location_locked = (Location.objects.select_for_update()
+                                .prefetch_related(*prefetch_list)
+                                .get(id=location.id))
 
-        events = location_locked.event_set.all()
+            events = location_locked.event_set.all()
 
-        if events:
-            # Just picking first available here
-            # Consider ordering or some other rank
-            return events[0]
+            if events:
+                # Just picking first available here
+                # Consider ordering or some other rank
+                return events[0]
 
-        # No suitable event found, so create a new one
-        delta = time.time() - location_locked.last_event
-        ticks = math.floor(delta)
+            # No suitable event found, so create a new one
+            delta = time.time() - location_locked.last_event
+            ticks = math.floor(delta)
 
-        # Doing a fixed 5-second interval between events for now
-        # could make this variable or have ways to force an event
-        if location.type == 'D':
-            if ticks < location.dungeon.spawn_rate:
-                return None
+            # Doing a fixed 5-second interval between events for now
+            # could make this variable or have ways to force an event
+            if location.type == 'D':
+                if ticks < location.dungeon.spawn_rate:
+                    return None
 
-        event = Event.objects.create(location=location_locked, last_update=time.time())
+            event = Event.objects.create(location=location_locked, last_update=time.time())
 
-        if location.type == 'D':
-            etemps = location_locked.enemytemplate_set.all()
+            if location.type == 'D':
+                etemps = location_locked.enemytemplate_set.all()
 
-            # Just spawn one of each enemy type for now
-            for enemy in etemps:
-                Enemy.objects.create(template=enemy, event=event, name=enemy.name,
-                                     max_health=enemy.max_health, health=enemy.max_health,
-                                     attack_range=enemy.attack_range, attack_damage=enemy.attack_damage,
-                                     speed=enemy.speed, initiative=enemy.initiative, max_targets=1, level=1)
+                # Just spawn one of each enemy type for now
+                for enemy in etemps:
+                    Enemy.objects.create(template=enemy, event=event, name=enemy.name,
+                                         max_health=enemy.max_health, health=enemy.max_health,
+                                         attack_range=enemy.attack_range, attack_damage=enemy.attack_damage,
+                                         speed=enemy.speed, initiative=enemy.initiative, max_targets=1, level=1)
 
         return event
 
@@ -143,22 +154,21 @@ class BaseView(View):
         context = {}
         event = None
 
-        with transaction.atomic():
-            if not user.player.event:
-                event = BaseView.get_or_create_event(user.player.location)
-
-                if event:
-                    user.player.event = event
-                    user.player.save(update_fields=['event', ])
-
-            elif user.player.new_event or full:
-                event = user.player.event
+        if not user.player.event:
+            event = BaseView.get_or_create_event(user.player.location)
 
             if event:
-                enemies = Enemy.objects.select_related('template').filter(event=event)
-                players = Player.objects.filter(event=event).exclude(pk=user.player.id)
-                context['enemies'] = enemies
-                context['players'] = players
+                user.player.event = event
+                user.player.save(update_fields=['event', ])
+
+        elif (user.player.event.last_update >= user.last_refresh) or full:
+            event = user.player.event
+
+        if event:
+            enemies = Enemy.objects.select_related('template').filter(event=event)
+            players = Player.objects.filter(event=event).exclude(pk=user.player.id)
+            context['enemies'] = enemies
+            context['players'] = players
 
         return context
 
@@ -357,24 +367,25 @@ class Map(BaseView):
         return HttpResponse(html)
 
     def get(self, request):
-        user = self.prep_user(['player__location__region__world', 'player__event', 'player__location__dungeon'])
+        user = self.prep_user(['player__event',
+                               'player__location__region__world',
+                               'player__location__dungeon',
+                               'player__location__town'])
         if not user:
             return redirect('login')
 
         context = {}
+        player_updates = []
 
         try:
             # Render partials (update trigger)
             if request.GET.get('trigger', None) == 'update':
-                delta = time.time() - user.last_update
+                delta = time.time() - user.last_refresh
                 ticks = math.floor(delta)
 
                 if ticks >= 1:
-                    user.last_update = time.time()
-
                     partials = []
-
-                    recent_messages = self.get_region_messages(region=user.player.location.region)
+                    recent_messages = self.get_region_messages(user=user)
                     region_players = self.get_region_players(region=user.player.location.region)
                     event_data = self.process_event_data(user=user)
 
@@ -395,36 +406,29 @@ class Map(BaseView):
                         context['event'] = event_data
                         partials.append('partials/event.html')
 
-                    with transaction.atomic():
-                        entity_updates = []
+                    if user.player.new_location:
+                        user.player.new_location = False
+                        player_updates.append('new_location')
 
-                        if user.player.new_location:
-                            user.player.new_location = False
-                            entity_updates.append('new_location')
+                    if user.player.new_status:
+                        user.player.new_status = False
+                        player_updates.append('new_status')
 
-                        if user.player.new_status:
-                            user.player.new_status = False
-                            entity_updates.append('new_status')
-
-                        if user.player.new_event:
-                            user.player.new_event = False
-                            entity_updates.append('new_event')
-
-                        if entity_updates:
-                            user.player.save(update_fields=entity_updates)
-
-                        user.save(update_fields=['last_update'])
+                    if player_updates:
+                        with transaction.atomic():
+                            user.player.save(update_fields=player_updates)
 
                     if partials:
                         return self.render_partials(partials, context)
+
+                    user.last_refresh = time.time()
+                    user.save(update_fields=['last_refresh'])
 
                 return HttpResponse(status=204)
 
             # Render full template ( initial load )
             else:
-                user.last_update = time.time()
-
-                recent_messages = self.get_region_messages(region=user.player.location.region)
+                recent_messages = self.get_region_messages(user=user, full=True)
                 region_players = self.get_region_players(region=user.player.location.region)
                 context['travel'] = self.get_travel_data(user=user)
                 context['event'] = self.process_event_data(user=user, full=True)
@@ -433,25 +437,20 @@ class Map(BaseView):
                 context['character'] = user.player
                 context['character_health_perc'] = user.player.health_perc
 
-                with transaction.atomic():
-                    entity_updates = []
+                if user.player.new_location:
+                    user.player.new_location = False
+                    player_updates.append('new_location')
 
-                    if user.player.new_location:
-                        user.player.new_location = False
-                        entity_updates.append('new_location')
+                if user.player.new_status:
+                    user.player.new_status = False
+                    player_updates.append('new_status')
 
-                    if user.player.new_status:
-                        user.player.new_status = False
-                        entity_updates.append('new_status')
+                if player_updates:
+                    with transaction.atomic():
+                        user.player.save(update_fields=player_updates)
 
-                    if user.player.new_event:
-                        user.player.new_event = False
-                        entity_updates.append('new_event')
-
-                    if entity_updates:
-                        user.player.save(update_fields=entity_updates)
-
-                    user.save(update_fields=['last_update'])
+                user.last_refresh = time.time()
+                user.save(update_fields=['last_refresh'])
 
                 return render(request, self.template_name, context)
 
@@ -520,7 +519,7 @@ class RegionChat(BaseView):
         msg = request.POST.get('region-chat-msg', '')
         msg_cleaned = self.clean_text(text=msg)
         RegionChatMessage.objects.create(message=msg_cleaned, user=user, region=region)
-        messages = self.get_region_messages(region=region)
+        messages = self.get_region_messages(user=user)
 
         context['messages'] = messages
 
