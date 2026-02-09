@@ -1,7 +1,7 @@
 from django.contrib import admin
 from datetime import datetime
 from .models import (
-    World, Region, Location, Town, Dungeon,
+    World, Region, Location,
     Event, EnemyTemplate, Entity, Player, Enemy,
     RegionChatMessage
 )
@@ -66,18 +66,6 @@ class LocationAdmin(admin.ModelAdmin):
     raw_id_fields = ('region',)
     readonly_fields = ('public_id',)
     search_fields = ('name', 'public_id')
-
-
-@admin.register(Town)
-class TownAdmin(LocationAdmin):
-    def get_queryset(self, request):
-        return super().get_queryset(request).filter(type='T')
-
-
-@admin.register(Dungeon)
-class DungeonAdmin(LocationAdmin):
-    def get_queryset(self, request):
-        return super().get_queryset(request).filter(type='D')
 
 
 @admin.register(Event)

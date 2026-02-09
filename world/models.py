@@ -49,27 +49,12 @@ class Location(models.Model):
     last_event = models.FloatField(null=True, blank=True, default=0)
     type = models.CharField('Location type', max_length=1, choices=LOCATION_TYPES)
     max_players = models.IntegerField(default=1)
+    spawn_rate = models.IntegerField(null=True, default=5)
 
     region = models.ForeignKey(Region, on_delete=models.CASCADE)
 
     def __str__(self):
         return self.name
-
-
-class Dungeon(Location):
-    spawn_rate = models.IntegerField(default=5)
-
-    def save(self, *args, **kwargs):
-        self.type = 'D'
-        self.max_players = 5
-        super().save(*args, **kwargs)
-
-
-class Town(Location):
-    def save(self, *args, **kwargs):
-        self.type = 'T'
-        self.max_players = 100
-        super().save(*args, **kwargs)
 
 
 class Event(models.Model):

@@ -24,8 +24,8 @@ FROM python:3.13-slim
 
 # Create user and directories
 RUN useradd -m -r appuser && \
-    mkdir /app && \
-    chown -R appuser /app
+    mkdir -p /app/staticfiles && \
+    chown -R appuser:appuser /app
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
