@@ -1,7 +1,7 @@
 from django.contrib import admin
 from datetime import datetime
 from .models import (
-    World, Region, Location, Town, Dungeon,
+    World, Region, Location,
     Event, EnemyTemplate, Entity, Player, Enemy,
     RegionChatMessage
 )
@@ -68,18 +68,6 @@ class LocationAdmin(admin.ModelAdmin):
     search_fields = ('name', 'public_id')
 
 
-@admin.register(Town)
-class TownAdmin(LocationAdmin):
-    def get_queryset(self, request):
-        return super().get_queryset(request).filter(type='T')
-
-
-@admin.register(Dungeon)
-class DungeonAdmin(LocationAdmin):
-    def get_queryset(self, request):
-        return super().get_queryset(request).filter(type='D')
-
-
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
     list_display = ('__str__', 'active', 'size', 'last_update_fmt')
@@ -115,7 +103,7 @@ class EntityAdmin(admin.ModelAdmin):
 @admin.register(Player)
 class PlayerAdmin(admin.ModelAdmin):
     list_display = ('name', 'owner', 'level', 'location', 'event')
-    list_filter = ('level', 'new_location', 'new_event')
+    list_filter = ('level', 'new_location',)
     raw_id_fields = ('owner', 'active', 'location', 'event', 'target')
     readonly_fields = ('public_id',)
     search_fields = ('name', 'public_id', 'owner__username')
@@ -123,7 +111,7 @@ class PlayerAdmin(admin.ModelAdmin):
     fieldsets = (
         ('Identity', {'fields': ('public_id', 'name', 'owner', 'active')}),
         ('State', {'fields': ('location', 'event', 'target', 'position')}),
-        ('Flags', {'fields': ('new_status', 'new_location', 'new_event')}),
+        ('Flags', {'fields': ('new_status', 'new_location',)}),
         ('Stats', {'fields': (('level', 'health', 'max_health'), ('attack_damage', 'attack_range', 'speed'))}),
     )
 
@@ -131,7 +119,7 @@ class PlayerAdmin(admin.ModelAdmin):
 @admin.register(Enemy)
 class EnemyAdmin(admin.ModelAdmin):
     list_display = ('name', 'template', 'level', 'event')
-    list_filter = ('level', 'new_event')
+    list_filter = ('level',)
     raw_id_fields = ('template', 'event', 'target')
     readonly_fields = ('public_id',)
     search_fields = ('name', 'public_id')
