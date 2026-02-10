@@ -490,23 +490,21 @@ class Travel(BaseView):
 
     def post(self, request):
         player = self.prep_player(['location__region',
-                                   'event__location',
-                                   'owner'])
+                                   'event',])
         if not player:
             return redirect('login')
 
         context = {}
         update_fields = []
 
-        selected_location = (Location.objects.select_related('region__world')
-                             .only('region', 'last_event', 'world')
+        selected_location = (Location.objects.select_related('region')
                              .get(public_id=request.POST['public_id']))
 
         if selected_location != player.location:
             if selected_location.region == player.location.region:
                 with transaction.atomic():
-                    # Remove event if we left the event location
-                    if player.event and (player.event.location != selected_location):
+                    # Remove event since we have left the location
+                    if player.event:
                         player.event = None
                         update_fields.append('event')
 
@@ -514,6 +512,9 @@ class Travel(BaseView):
                     update_fields.append('location')
 
                     player.save(update_fields=update_fields)
+
+                # Refetch player object after updating location
+                player = Player.objects.select_related('location__region__world', 'event', 'owner').get(pk=player.id)
 
                 # Update and get event data
                 context['event'] = self.process_event_data(player=player, full=True)
