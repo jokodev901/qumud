@@ -7,7 +7,7 @@ from django.views.generic import TemplateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect, render, reverse
 from django.http import HttpResponse
-from django.db.models import Prefetch, Count, Q
+from django.db.models import Prefetch, Count
 from django.db import transaction
 
 from django.utils.html import strip_tags
@@ -164,10 +164,11 @@ class BaseView(View):
 
                 # Just spawn one of each enemy type for now
                 for enemy in etemps:
-                    Enemy.objects.create(template=enemy, event=event, name=enemy.name,
-                                         max_health=enemy.max_health, health=enemy.max_health,
-                                         attack_range=enemy.attack_range, attack_damage=enemy.attack_damage,
-                                         speed=enemy.speed, initiative=enemy.initiative, max_targets=1, level=1)
+                    for _ in range(4):
+                        Enemy.objects.create(template=enemy, event=event, name=enemy.name,
+                                             max_health=enemy.max_health, health=enemy.max_health,
+                                             attack_range=enemy.attack_range, attack_damage=enemy.attack_damage,
+                                             speed=enemy.speed, initiative=enemy.initiative, max_targets=1, level=1)
 
         return event
 

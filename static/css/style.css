@@ -19,6 +19,7 @@
     background-color: #000;
     color: #fff;
     border: 1px solid #333;
+    border-radius: 0px;
 }
 
 .card-header {
@@ -30,16 +31,26 @@
     letter-spacing: 1px;
 }
 
+.minheight0 {
+    min-height: 0px !important;
+}
+
 /* Chat and Log Windows */
 .scroll-window {
-    height: 250px;
-    overflow-y: auto;
     background-color: #000;
-    border-radius: 4px;
     padding: 10px;
     font-family: monospace;
     font-size: 0.9rem;
     scrollbar-color: #fff #000;
+}
+
+.progress {
+    border-radius: 0px;
+}
+
+/* Status scroll window */
+.scroll-status {
+    border: 1px solid #333;
 }
 
 .scroll-window > :last-child {
@@ -47,7 +58,6 @@
 }
 
 .player-list {
-    height: 250px;
     overflow-y: auto;
     border-left: 1px solid #333;
     scrollbar-color: #fff #000;
@@ -71,7 +81,7 @@
     background-color: #000;
     color: #ffffff;
     border: 2px solid #fff;
-    border-radius: 3px;
+    border-radius: 0px;
     padding: 0.5rem 1.25rem;
     transition: all 0.2s ease-in-out;
 }
@@ -146,12 +156,10 @@
 
 /* Event Window Graphic Area */
 .event-graphic {
-    height: 250px;
     background: linear-gradient(1800deg, #1a1a1a 0%, #000 100%);
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 4px;
     margin-bottom: 10px;
     border: 1px solid #444;
 }
