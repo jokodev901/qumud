@@ -1,16 +1,23 @@
-<div id="event-card-swap" class="d-flex flex-column minheight0" hx-swap-oob="true">
-    <div class="event-graphic position-relative">
+<div id="event-card-swap" class="d-flex flex-column flex-grow-1 minheight0" hx-swap-oob="true">
+
+    <div class="event-graphic position-relative flex-shrink-0" style="min-height: 200px;">
         <span class="text-muted italic">Graphic Placeholder</span>
         {% for enemy in event.enemies %}
         {{ enemy.template.svg|safe }}
         {% endfor %}
     </div>
-    <div class="scroll-window mb-3" style="height: 250px; font-size: 0.85rem;">
+
+    <div class="scroll-window my-3 overflow-auto flex-grow-1 minheight0">
         {% for enemy in event.enemies %}
         <div class="text-success">You encountered a lvl {{ enemy.level }} {{ enemy.name }}</div>
         {% endfor %}
         {% for player in event.players %}
         <div class="text-white">You encountered player {{ player.name }}</div>
         {% endfor %}
+    </div>
+
+    <div class="d-flex gap-2 justify-content-end mt-auto flex-shrink-0">
+        <button class="btn btn-sm btn-dark-outline px-4">Flee</button>
+        <button class="btn btn-sm btn-dark-outline px-4">Loot Item</button>
     </div>
 </div>

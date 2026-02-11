@@ -522,6 +522,9 @@ class Travel(BaseView):
                 context['travel'] = self.get_travel_data(player=player)
                 templates = ('partials/travel.html', 'partials/event.html')
 
+                player.owner.last_refresh = time.time()
+                player.owner.save(update_fields=['last_refresh'])
+
                 return self.render_partials(templates, context)
 
             return HttpResponse('Invalid selection', status=400)
