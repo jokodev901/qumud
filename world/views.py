@@ -20,6 +20,7 @@ from authentication.models import User
 from .models import (World, Region, Location, RegionChatMessage, Player, Enemy, EnemyTemplate,
                      Event)
 from .forms import CharacterCreationForm, WorldCreationForm
+from .event import process_dungeon_event, process_town_event
 
 
 class BaseView(View):
@@ -130,7 +131,7 @@ class BaseView(View):
             event_prefetch = Prefetch('event_set',
                                       queryset=Event.objects.all()
                                       .annotate(player_count=player_count)
-                                      .filter(active=True, player_count__lt=location.max_players))
+                                      .filter(player_count__lt=location.max_players))
             prefetch_list.append(event_prefetch)
 
             if location.type == 'D':
@@ -174,27 +175,25 @@ class BaseView(View):
 
     @staticmethod
     def process_event_data(player: Player, full: bool = False) -> dict:
-        context = {}
-        event = None
+        event_data = None
+        event = player.event
+        location = player.location
 
+        # If player is not already in an event, try to put them in one
         if not player.event:
-            location = player.location
             event = BaseView.get_or_create_event(location)
 
             if event:
                 player.event = event
                 player.save(update_fields=['event', ])
 
-        elif (player.event.last_update >= player.owner.last_refresh) or full:
-            event = player.event
+        if location.type == 'D':
+            event_data = process_dungeon_event(player, event, full)
 
-        if event:
-            enemies = Enemy.objects.select_related('template').filter(event=event)
-            players = Player.objects.filter(event=event).exclude(pk=player.id)
-            context['enemies'] = enemies
-            context['players'] = players
+        if location.type == 'T':
+            event_data = process_town_event(player, event, full)
 
-        return context
+        return event_data
 
 
 class UserProfileView(LoginRequiredMixin, TemplateView):
@@ -359,7 +358,8 @@ class SelectWorld(BaseView):
                                                                   biome=region_data['biome'], count=5)
 
                         for enemy in enemy_temps:
-                            EnemyTemplate.objects.create(location=d, name=enemy['name'], svg=enemy['svg'])
+                            EnemyTemplate.objects.create(location=d, name=enemy['name'], svg=enemy['svg'],
+                                                         max_health=enemy['max_health'])
 
                     world.save()
 
@@ -506,6 +506,12 @@ class Travel(BaseView):
                 with transaction.atomic():
                     # Remove event since we have left the location
                     if player.event:
+                        # If we are the last player to leave an event, then set it to inactive
+                        event_players = player.event.player_set.all().exclude(pk=player.id)
+                        if not event_players:
+                            player.event.active = False
+                            player.event.save(update_fields=["active", ])
+
                         player.event = None
                         update_fields.append('event')
 

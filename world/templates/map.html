@@ -20,11 +20,14 @@
                         </div>
 
                         <div class="scroll-window my-3 overflow-auto flex-grow-1 minheight0">
-                            {% for enemy in event.enemies %}
-                            <div class="text-success">You encountered a lvl {{ enemy.level }} {{ enemy.name }}</div>
-                            {% endfor %}
-                            {% for player in event.players %}
-                            <div class="text-white">You encountered player {{ player.name }}</div>
+                            <div class="text-success">
+                                {% for enemy in event.enemies %}{{ enemy.level }} {{ enemy.name }}{% endfor %}
+                            </div>
+                            <div class="text-white">
+                                {% for player in event.players %} You encountered player {{ player.name }}{% endfor %}
+                            </div>
+                            {% for log in event.log %}
+                            <div class="text-danger">{{ log }}</div>
                             {% endfor %}
                         </div>
 

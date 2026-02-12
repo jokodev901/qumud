@@ -3,6 +3,7 @@ import time
 import math
 
 from django.db import models
+from django.contrib.postgres.fields import ArrayField
 from authentication.models import User
 
 
@@ -74,6 +75,13 @@ class Event(models.Model):
 
     def __str__(self):
         return f'{self.location.name} Event {str(self.pk)}'
+
+
+class EventLog(models.Model):
+    timestamp = models.FloatField(default=time.time(), db_index=True)
+    log = ArrayField(models.CharField(max_length=200), blank=True)
+
+    event = models.ForeignKey(Event, on_delete=models.CASCADE)
 
 
 class EnemyTemplate(models.Model):
@@ -181,10 +189,18 @@ class Player(Entity):
         super().save(*args, **kwargs)
 
 
+class PlayerLog(models.Model):
+    timestamp = models.FloatField(default=time.time(), db_index=True)
+    log = ArrayField(models.CharField(max_length=200), blank=True)
+
+    player = models.ForeignKey(Player, on_delete=models.CASCADE)
+
+
 class Enemy(Entity):
     # Relationships
     template = models.ForeignKey(EnemyTemplate,  null=True, blank=True, on_delete=models.CASCADE)
     event = models.ForeignKey(Event, null=True, blank=True, on_delete=models.CASCADE)
+    active = models.BooleanField(default=True)
 
     def save(self, *args, **kwargs):
         if not self.id:
