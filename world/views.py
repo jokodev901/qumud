@@ -19,7 +19,7 @@ from rest_framework.authtoken.models import Token
 from core.utils import generators
 from authentication.models import User
 from .models import (World, Region, Location, RegionChatMessage, Player, Enemy, EnemyTemplate,
-                     Event)
+                     Event, EventLog)
 from .forms import CharacterCreationForm, WorldCreationForm
 from .event import process_dungeon_event, process_town_event
 
@@ -159,6 +159,7 @@ class BaseView(View):
                 if ticks < location.spawn_rate:
                     return None
 
+            eventlog = []
             event = Event.objects.create(location=location, last_update=time.time())
 
             if location.type == 'D':
@@ -167,16 +168,20 @@ class BaseView(View):
                 # Just spawn one of each enemy type for now
                 for enemy in etemps:
                     for _ in range(4):
-                        Enemy.objects.create(template=enemy, event=event, name=enemy.name,
-                                             max_health=enemy.max_health, health=enemy.max_health,
-                                             attack_range=enemy.attack_range, attack_damage=enemy.attack_damage,
-                                             speed=enemy.speed, initiative=enemy.initiative, max_targets=1, level=1)
+                        e = Enemy.objects.create(template=enemy, event=event, name=enemy.name,
+                                                 max_health=enemy.max_health, health=enemy.max_health,
+                                                 attack_range=enemy.attack_range, attack_damage=enemy.attack_damage,
+                                                 speed=enemy.speed, initiative=enemy.initiative, max_targets=1, level=1)
+
+                        eventlog.append(f'Encountered lvl {e.level} {e.name}!')
+
+                EventLog.objects.create(event=event, log=eventlog)
 
         return event
 
     @staticmethod
     def process_event_data(player: Player, full: bool = False) -> dict:
-        event_data = None
+        event_data = {'log': ('Exploring...',)}
         event = player.event
         location = player.location
 
