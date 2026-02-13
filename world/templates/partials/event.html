@@ -1,5 +1,4 @@
 <div id="event-card-swap" class="d-flex flex-column flex-grow-1 minheight0" hx-swap-oob="true">
-
     <div class="event-graphic position-relative flex-shrink-0" style="min-height: 200px;">
         <span class="text-muted italic">Graphic Placeholder</span>
         {% for enemy in event.enemies %}
@@ -7,13 +6,7 @@
         {% endfor %}
     </div>
 
-    <div class="scroll-window my-3 overflow-auto flex-grow-1 minheight0">
-        <div class="text-success">
-            {% for enemy in event.enemies %}{{ enemy.level }} {{ enemy.name }}{% endfor %}
-        </div>
-        <div class="text-white">
-            {% for player in event.players %} You encountered player {{ player.name }}{% endfor %}
-        </div>
+    <div id="event-log-swap" class="scroll-window my-3 overflow-auto flex-grow-1 minheight0" hx-swap-oob="afterbegin">
         {% for log in event.log %}
         <div class="text-danger">{{ log }}</div>
         {% endfor %}

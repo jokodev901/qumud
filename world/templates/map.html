@@ -19,13 +19,7 @@
                             {% endfor %}
                         </div>
 
-                        <div class="scroll-window my-3 overflow-auto flex-grow-1 minheight0">
-                            <div class="text-success">
-                                {% for enemy in event.enemies %}{{ enemy.level }} {{ enemy.name }}{% endfor %}
-                            </div>
-                            <div class="text-white">
-                                {% for player in event.players %} You encountered player {{ player.name }}{% endfor %}
-                            </div>
+                        <div id="event-log-swap" class="scroll-window my-3 overflow-auto flex-grow-1 minheight0">
                             {% for log in event.log %}
                             <div class="text-danger">{{ log }}</div>
                             {% endfor %}
@@ -172,32 +166,4 @@
         </div>
     </div>
 </div>
-<script>
-    function moveSprites() {
-        const sprites = document.querySelectorAll('.sprite');
-
-        sprites.forEach((sprite) => {
-            // Only move if the sprite is NOT defeated
-            if (!sprite.classList.contains('defeat-animate')) {
-                const randomTop = Math.floor(Math.random() * 60) + 20;
-                const randomLeft = Math.floor(Math.random() * 60) + 20;
-
-                sprite.style.top = `${randomTop}%`;
-                sprite.style.left = `${randomLeft}%`;
-            }
-        });
-    }
-
-    // Start the movement
-    const movementInterval = setInterval(moveSprites, 2000);
-
-    // TEST 1: Defeat the first sprite after 10 seconds
-    setTimeout(() => {
-        const sprites = document.querySelectorAll('.sprite');
-        if (sprites[0]) {
-            console.log("Defeating Sprite 1...");
-            sprites[0].classList.add('defeat-animate');
-        }
-    }, 10000);
-</script>
 {% endblock %}

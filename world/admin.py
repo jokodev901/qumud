@@ -3,7 +3,7 @@ from datetime import datetime
 from .models import (
     World, Region, Location,
     Event, EnemyTemplate, Entity, Player, Enemy,
-    RegionChatMessage
+    RegionChatMessage, EventLog
 )
 
 
@@ -24,7 +24,7 @@ class PlayerInline(admin.TabularInline):
     extra = 0
     fields = ('name', 'health', 'level')
     readonly_fields = ('name', 'health', 'level')
-    verbose_name = "Player in Event"
+    verbose_name = "Players in Event"
     show_change_link = True
 
 
@@ -33,7 +33,16 @@ class EnemyInline(admin.TabularInline):
     extra = 0
     fields = ('name', 'health', 'level')
     readonly_fields = ('name', 'health', 'level')
-    verbose_name = "Enemy in Event"
+    verbose_name = "Enemies in Event"
+    show_change_link = True
+
+
+class EventLogInline(admin.TabularInline):
+    model = EventLog
+    extra = 0
+    fields = ('timestamp', 'log')
+    readonly_fields = ('timestamp',)
+    verbose_name = "Event logs"
     show_change_link = True
 
 
@@ -75,7 +84,7 @@ class EventAdmin(admin.ModelAdmin):
     raw_id_fields = ('location',)
     readonly_fields = ('public_id', 'last_update')
 
-    inlines = [PlayerInline, EnemyInline]
+    inlines = [PlayerInline, EnemyInline, EventLogInline]
 
     def last_update_fmt(self, obj):
         return datetime.fromtimestamp(obj.last_update).strftime('%H:%M:%S') if obj.last_update else "-"

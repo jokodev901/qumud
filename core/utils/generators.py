@@ -83,7 +83,7 @@ def generate_enemies(seed: str, level: int, biome: str, count: int) -> list[dict
         name = " ".join(words).title()
         svg = generate_abstract_entity(seed_string=name)
 
-        enemy_dict = {'name': name, 'level': level, 'svg': svg, 'max_health': 5}
+        enemy_dict = {'name': name, 'level': level, 'svg': svg, 'max_health': 10}
         enemies.append(enemy_dict)
 
     return enemies

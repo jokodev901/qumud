@@ -11,6 +11,7 @@ from django.db.models import Prefetch, Count
 from django.db import transaction
 
 from django.utils.html import strip_tags
+from django.template import engines
 from django.template.loader import render_to_string
 
 from rest_framework.authtoken.models import Token
@@ -94,7 +95,7 @@ class BaseView(View):
     @staticmethod
     def get_region_players(region: Region, timeout: int = 10):
         players = (User.objects.all()
-                   .filter(player__location__region=region, last_refresh__gte=time.time() - timeout)
+                   .filter(player__location__region=region, last_refresh__gte=(time.time() - timeout))
                    .order_by('alias'))
 
         return players
@@ -187,10 +188,10 @@ class BaseView(View):
                 player.event = event
                 player.save(update_fields=['event', ])
 
-        if location.type == 'D':
+        if location.type == 'D' and event:
             event_data = process_dungeon_event(player, event, full)
 
-        if location.type == 'T':
+        if location.type == 'T' and event:
             event_data = process_town_event(player, event, full)
 
         return event_data
@@ -384,12 +385,21 @@ class SelectWorld(BaseView):
 class Map(BaseView):
     template_name = 'map.html'
 
-    def render_partials(self, partials, context):
+    def render_partials(self, request, partials, str_partials, context):
         """
-        Takes a list of template paths and returns a combined HttpResponse.
+        Takes a list of template paths OR raw strings and returns a combined HttpResponse.
         """
-        html = "".join([render_to_string(partial, context) for partial in partials])
-        return HttpResponse(html)
+        django_engine = engines['django']
+        html_parts = []
+
+        for partial in partials:
+            html_parts.append(render_to_string(partial, context, request=request))
+
+        for partial in str_partials:
+            template_obj = django_engine.from_string(partial)
+            html_parts.append(template_obj.render(context, request=request))
+
+        return HttpResponse("".join(html_parts))
 
     def get(self, request):
         player = self.prep_player(['location__region__world', 'event', 'owner'])
@@ -403,49 +413,57 @@ class Map(BaseView):
         try:
             # Render partials (update trigger)
             if request.GET.get('trigger', None) == 'update':
-                delta = time.time() - player.owner.last_refresh
-                ticks = math.floor(delta)
+                partials = []
+                str_partials = []
+                recent_messages = self.get_region_messages(player=player)
+                region_players = self.get_region_players(region=player.location.region)
+                event_data = self.process_event_data(player=player)
 
-                if ticks >= 1:
-                    partials = []
-                    recent_messages = self.get_region_messages(player=player)
-                    region_players = self.get_region_players(region=player.location.region)
-                    event_data = self.process_event_data(player=player)
+                if player.new_status:
+                    context['character'] = player
+                    context['character_health_perc'] = player.health_perc
+                    partials.append('partials/status.html')
 
-                    if player.new_status:
-                        context['character'] = player
-                        context['character_health_perc'] = player.health_perc
-                        partials.append('partials/status.html')
+                if recent_messages:
+                    context['messages'] = recent_messages
+                    partials.append('partials/region_chat.html')
 
-                    if recent_messages:
-                        context['messages'] = recent_messages
-                        partials.append('partials/region_chat.html')
+                if region_players:
+                    context['region_players'] = region_players
+                    partials.append('partials/region_players.html')
 
-                    if region_players:
-                        context['region_players'] = region_players
-                        partials.append('partials/region_players.html')
+                if event_data:
+                    event_partial = '''
+                        <div id="event-log-swap"
+                         class="scroll-window my-3 overflow-auto flex-grow-1 minheight0"
+                         hx-swap-oob="afterbegin">
+                            {% for log in event.log %}
+                            <div class="text-danger">{{ log }}</div>
+                            {% endfor %}
+                        </div>
+                    '''
+                    context['event'] = event_data
+                    str_partials.append(event_partial)
 
-                    if event_data:
-                        context['event'] = event_data
-                        partials.append('partials/event.html')
+                    # partials.append('partials/event.html')
 
-                    if player.new_location:
-                        player.new_location = False
-                        player_updates.append('new_location')
+                if player.new_location:
+                    player.new_location = False
+                    player_updates.append('new_location')
 
-                    if player.new_status:
-                        player.new_status = False
-                        player_updates.append('new_status')
+                if player.new_status:
+                    player.new_status = False
+                    player_updates.append('new_status')
 
-                    if player_updates:
-                        with transaction.atomic():
-                            player.save(update_fields=player_updates)
+                if player_updates:
+                    with transaction.atomic():
+                        player.save(update_fields=player_updates)
 
-                    if partials:
-                        return self.render_partials(partials, context)
+                player.owner.last_refresh = time.time()
+                player.owner.save(update_fields=['last_refresh'])
 
-                    player.owner.last_refresh = time.time()
-                    player.owner.save(update_fields=['last_refresh'])
+                if partials:
+                    return self.render_partials(request, partials, str_partials, context)
 
                 return HttpResponse(status=204)
 

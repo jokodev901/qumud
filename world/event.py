@@ -5,7 +5,7 @@ import math
 from django.db import transaction
 from django.db.models import Prefetch
 
-from world.models import Event, Player, Enemy, EventLog, PlayerLog
+from world.models import Event, Player, Enemy, EventLog, PlayerLog, Location
 
 
 def process_town_event(player: Player, event: Event, full: bool) -> dict | None:
@@ -19,8 +19,8 @@ def process_dungeon_event(player: Player, event: Event, full: bool) -> dict | No
     ticks = math.floor(time.time() - event.last_update)
 
     # No updates to do, exit early
-    # if ticks == 0 or not full:
-    #     return None
+    if ticks == 0 and not full:
+        return None
 
     with transaction.atomic():
         player_prefetch = Prefetch('player_set',
@@ -40,6 +40,12 @@ def process_dungeon_event(player: Player, event: Event, full: bool) -> dict | No
         # No enemies, so delete event after 2 seconds
         if not event_lock.enemies:
             if ticks >= 2:
+                try:
+                    location = Location.objects.get(pk=event_lock.location_id)
+                    location.last_event = time.time()
+                    location.save(update_fields=['last_event'])
+                except Location.DoesNotExist:
+                    pass
                 event_lock.delete()
                 return None
 
@@ -79,6 +85,7 @@ def process_dungeon_event(player: Player, event: Event, full: bool) -> dict | No
                    filter(timestamp__gte=player.owner.last_refresh).
                    order_by('-timestamp'))
 
+        newlog.reverse()
         eventlog = newlog + [item for log in backlog for item in log]
 
         # Perform final database updates if needed
