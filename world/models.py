@@ -78,8 +78,9 @@ class Event(models.Model):
 
 
 class EventLog(models.Model):
-    timestamp = models.FloatField(default=time.time(), db_index=True)
+    timestamp = models.FloatField(db_index=True)
     log = ArrayField(models.CharField(max_length=200), blank=True)
+    # htclass = models.CharField(max_length=64, blank=True, null=True)
 
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
 
@@ -168,13 +169,8 @@ class Player(Entity):
             if update_fields is not None:
                 update_set = set(update_fields)
 
-                # event_update = not update_set.isdisjoint(self.EVENT_FIELDS)
                 status_update = not update_set.isdisjoint(self.STATUS_FIELDS)
                 location_update = not update_set.isdisjoint(self.LOCATION_FIELDS)
-
-                # if event_update or location_update:
-                #     event_ids = filter(None, (self._previous_event_id, self.event_id))
-                #     Event.objects.filter(id__in=event_ids).update(last_update=time.time())
 
                 if location_update:
                     self.new_location = True
@@ -190,7 +186,7 @@ class Player(Entity):
 
 
 class PlayerLog(models.Model):
-    timestamp = models.FloatField(default=time.time(), db_index=True)
+    timestamp = models.FloatField(db_index=True)
     log = ArrayField(models.CharField(max_length=200), blank=True)
 
     player = models.ForeignKey(Player, on_delete=models.CASCADE)
@@ -205,20 +201,6 @@ class Enemy(Entity):
     def save(self, *args, **kwargs):
         if not self.id:
             self.type = 'E'
-
-        # else:
-        #     update_fields = kwargs.get('update_fields')
-        #     # push an updates to fields or related models when relevant field changes are made
-        #
-        #     if update_fields is not None:
-        #         update_set = set(update_fields)
-        #
-        #         event_update = not update_set.isdisjoint(self.EVENT_FIELDS)
-        #
-        #         if event_update:
-        #             Event.objects.filter(id=self.event_id).update(last_update=time.time())
-        #
-        #         kwargs['update_fields'] = update_set
 
         super().save(*args, **kwargs)
 

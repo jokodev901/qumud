@@ -175,7 +175,7 @@ class BaseView(View):
 
                         eventlog.append(f'Encountered lvl {e.level} {e.name}!')
 
-                EventLog.objects.create(event=event, log=eventlog)
+                EventLog.objects.create(event=event, log=eventlog, timestamp=time.time())
 
         return event
 

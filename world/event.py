@@ -21,7 +21,7 @@ def process_dungeon_event(player: Player, event: Event, full: bool) -> dict | No
     # fetch backlog regardless of update timing
     backlogs = (EventLog.objects.all().
                values_list('log', flat=True).
-               filter(timestamp__gte=player.owner.last_refresh).
+               filter(timestamp__gte=player.owner.last_refresh, event=event).
                order_by('-timestamp'))
 
     backlog = [item for log in backlogs for item in log]
@@ -47,23 +47,18 @@ def process_dungeon_event(player: Player, event: Event, full: bool) -> dict | No
             # Consider event paused while inactive (due to no players present)
             # Resume with fresh update time when a player joins again
             if not event_lock.active:
-                event_lock.active = True
-                event_lock.last_update = time.time()
+                Event.objects.filter(pk=event_lock.pk).update(last_event=time.time(), active=True)
                 ticks = 0
-                event_lock.save(update_fields=['active', 'last_update'])
 
             # If no enemies are left then event is over, update location last_event and delete
             if not event_lock.enemies:
-                try:
-                    location = Location.objects.get(pk=event_lock.location_id)
-                    location.last_event = time.time()
-                    location.save(update_fields=['last_event'])
-                except Location.DoesNotExist:
-                    pass
-                event_lock.delete()
+                Location.objects.filter(pk=event_lock.location_id).update(last_event=time.time())
+                Enemy.objects.filter(event=event_lock).delete()
+                Event.objects.filter(pk=event_lock.pk).delete()
+
                 return {'log': backlog, 'players': None, 'enemies': None}
 
-            player_logs = {player.id: [] for player in event_lock.players}
+            # player_logs = {player.id: [] for player in event_lock.players}
             dead_enemies = []
             dead_players = []
 
@@ -89,9 +84,9 @@ def process_dungeon_event(player: Player, event: Event, full: bool) -> dict | No
             newlog.reverse()
             eventlog = newlog + backlog
             if newlog:
-                EventLog.objects.create(event=event_lock, log=newlog)
+                EventLog.objects.create(event=event_lock, log=newlog, timestamp=time.time())
 
-            event_lock.last_update = time.time()
+            event_lock.last_update = time.time() - (time.time() % event_lock.last_update)
             event_lock.save(update_fields=['last_update'])
             Enemy.objects.bulk_update(dead_enemies + event_lock.enemies, ['health', 'active'])
 
