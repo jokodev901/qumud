@@ -40,8 +40,8 @@ class EnemyInline(admin.TabularInline):
 class EventLogInline(admin.TabularInline):
     model = EventLog
     extra = 0
-    fields = ('timestamp', 'log')
-    readonly_fields = ('timestamp',)
+    fields = ('created_at', 'log')
+    readonly_fields = ('created_at',)
     verbose_name = "Event logs"
     show_change_link = True
 
@@ -127,22 +127,22 @@ class PlayerAdmin(admin.ModelAdmin):
 
 @admin.register(Enemy)
 class EnemyAdmin(admin.ModelAdmin):
-    list_display = ('name', 'template', 'level', 'event')
+    list_display = ('name', 'level', 'event')
     list_filter = ('level',)
-    raw_id_fields = ('template', 'event', 'target')
+    raw_id_fields = ('event', 'target')
     readonly_fields = ('public_id',)
     search_fields = ('name', 'public_id')
 
 
 @admin.register(RegionChatMessage)
 class RegionChatMessageAdmin(admin.ModelAdmin):
-    list_display = ('user', 'region', 'message_preview', 'sent_at_fmt')
+    list_display = ('user', 'region', 'message_preview', 'created_at_fmt')
     raw_id_fields = ('user', 'region')
-    readonly_fields = ('sent_at',)
-    ordering = ('-sent_at',)
+    readonly_fields = ('created_at',)
+    ordering = ('-created_at',)
 
     def message_preview(self, obj):
         return obj.message[:50]
 
-    def sent_at_fmt(self, obj):
-        return datetime.fromtimestamp(obj.sent_at).strftime('%Y-%m-%d %H:%M:%S')
+    def created_at_fmt(self, obj):
+        return datetime.fromtimestamp(obj.created_at).strftime('%Y-%m-%d %H:%M:%S')

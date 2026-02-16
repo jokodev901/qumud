@@ -83,11 +83,11 @@ class BaseView(View):
 
         messages = (RegionChatMessage.objects.all()
                     .select_related('user')
-                    .filter(region=player.location.region, sent_at__gte=time.time()-600)
-                    .order_by('-sent_at'))[:count]
+                    .filter(region=player.location.region, created_at__gte=time.time()-600)
+                    .order_by('-created_at'))[:count]
 
         if messages:
-            if (messages[0].sent_at >= player.owner.last_refresh) or full:
+            if (messages[0].created_at >= player.owner.last_refresh) or full:
                 return messages
 
         return None
@@ -159,7 +159,7 @@ class BaseView(View):
                 if ticks < location.spawn_rate:
                     return None
 
-            eventlog = []
+            eventlogs = []
             event = Event.objects.create(location=location, last_update=time.time())
 
             if location.type == 'D':
@@ -167,21 +167,25 @@ class BaseView(View):
 
                 # Just spawn one of each enemy type for now
                 for enemy in etemps:
-                    for _ in range(4):
-                        e = Enemy.objects.create(template=enemy, event=event, name=enemy.name,
-                                                 max_health=enemy.max_health, health=enemy.max_health,
-                                                 attack_range=enemy.attack_range, attack_damage=enemy.attack_damage,
-                                                 speed=enemy.speed, initiative=enemy.initiative, max_targets=1, level=1)
+                    e = Enemy.objects.create(svg=enemy.svg, event=event, name=enemy.name,
+                                             max_health=enemy.max_health, health=enemy.max_health,
+                                             attack_range=enemy.attack_range, attack_damage=enemy.attack_damage,
+                                             speed=enemy.speed, initiative=enemy.initiative, max_targets=1,
+                                             level=1, position=50)
 
-                        eventlog.append(f'Encountered lvl {e.level} {e.name}!')
+                    eventlogs.append(
+                        EventLog(event=event,
+                                 htclass='text-warning',
+                                 log=f'Encountered lvl {e.level} {e.name}!')
+                    )
 
-                EventLog.objects.create(event=event, log=eventlog, timestamp=time.time())
+                EventLog.objects.bulk_create(eventlogs)
 
         return event
 
     @staticmethod
     def process_event_data(player: Player, full: bool = False) -> dict:
-        event_data = {'log': ('Exploring...',)}
+        event_data = {'log': [{'log': 'Exploring...', 'htclass': 'text-white'}]}
         event = player.event
         location = player.location
 
@@ -438,19 +442,8 @@ class Map(BaseView):
                     partials.append('partials/region_players.html')
 
                 if event_data:
-                    event_partial = '''
-                        <div id="event-log-swap"
-                         class="scroll-window my-3 overflow-auto flex-grow-1 minheight0"
-                         hx-swap-oob="afterbegin">
-                            {% for log in event.log %}
-                            <div class="text-danger">{{ log }}</div>
-                            {% endfor %}
-                        </div>
-                    '''
                     context['event'] = event_data
-                    str_partials.append(event_partial)
-
-                    # partials.append('partials/event.html')
+                    partials.append('partials/event.html')
 
                 if player.new_location:
                     player.new_location = False

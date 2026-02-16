@@ -11,17 +11,15 @@
                 </div>
                 <div id="event-card-body" class="card-body d-flex flex-column minheight0">
                     <div id="event-card-swap" class="d-flex flex-column flex-grow-1 minheight0">
-
-                        <div class="event-graphic position-relative flex-shrink-0" style="min-height: 200px;">
-                            <span class="text-muted italic">Graphic Placeholder</span>
+                        <div id="event-window-swap" class="event-graphic position-relative flex-shrink-0" style="min-height: 200px;">
                             {% for enemy in event.enemies %}
-                            {{ enemy.template.svg|safe }}
+                            {{ enemy.render_svg|safe }}
                             {% endfor %}
                         </div>
 
                         <div id="event-log-swap" class="scroll-window my-3 overflow-auto flex-grow-1 minheight0">
                             {% for log in event.log %}
-                            <div class="text-danger">{{ log }}</div>
+                            <div class="{{ log.htclass }}">{{ log.log }}</div>
                             {% endfor %}
                         </div>
 
@@ -166,4 +164,12 @@
         </div>
     </div>
 </div>
+<script>
+    function moveEntity(id, top, left) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.style.top = top+'%'; el.style.left = left+'%';
+    }
+}
+</script>
 {% endblock %}

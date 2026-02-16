@@ -132,17 +132,6 @@
     font-weight: 600;
 }
 
-/* svg animations */
-.sprite {
-    /* Smoothly animate changes to top, left, and transform over 0.4 seconds */
-    transition: top 0.4s ease-in-out, left 0.4s ease-in-out, opacity 0.5s ease;
-}
-
-.defeat-animate {
-    animation: fadeOutUp 0.8s forwards ease-out;
-    pointer-events: none; /* Can't click it while it's dying */
-}
-
 @keyframes fadeOutUp {
     0% {
         opacity: 1;
@@ -152,6 +141,16 @@
         opacity: 0;
         transform: translate(-50%, -120%); /* "Float" up by shifting center higher */
     }
+}
+
+/* svg animations */
+.sprite {
+    /* Smoothly animate changes to top, left, and transform over 0.4 seconds */
+    transition: top 0.4s ease-in-out, left 0.4s ease-in-out, opacity 0.5s ease;
+}
+
+.defeat-animate {
+    animation: fadeOutUp 0.8s forwards ease-out;
 }
 
 /* Event Window Graphic Area */
