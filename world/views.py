@@ -147,47 +147,49 @@ class BaseView(View):
             if events:
                 # Just picking first available here
                 # Consider ordering or some other rank
-                return events[0]
+                event = events[0]
 
-            # No suitable event found, so create a new one
-            delta = time.time() - location.last_event
-            ticks = math.floor(delta)
+            else:
+                # No suitable event found, so create a new one
+                delta = time.time() - location.last_event
+                ticks = math.floor(delta)
 
-            # Doing a fixed 5-second interval between events for now
-            # could make this variable or have ways to force an event
-            if location.type == 'D':
-                if ticks < location.spawn_rate:
-                    return None
+                # Doing a fixed 5-second interval between events for now
+                # could make this variable or have ways to force an event
+                if location.type == 'D':
+                    if ticks < location.spawn_rate:
+                        return None
 
-            eventlogs = []
-            event = Event.objects.create(location=location, last_update=time.time())
+                eventlogs = []
+                event = Event.objects.create(location=location, last_update=time.time())
 
-            if location.type == 'D':
-                etemps = location.enemytemplate_set.all()
+                if location.type == 'D':
+                    etemps = location.enemytemplate_set.all()
 
-                # Just spawn one of each enemy type for now
-                for enemy in etemps:
-                    e = Enemy.objects.create(svg=enemy.svg, event=event, name=enemy.name,
-                                             max_health=enemy.max_health, health=enemy.max_health,
-                                             attack_range=enemy.attack_range, attack_damage=enemy.attack_damage,
-                                             speed=enemy.speed, initiative=enemy.initiative, max_targets=1,
-                                             level=1, position=50)
+                    # Just spawn one of each enemy type for now
+                    for enemy in etemps:
+                        e = Enemy.objects.create(svg=enemy.svg, event=event, name=enemy.name,
+                                                 max_health=enemy.max_health, health=enemy.max_health,
+                                                 attack_range=enemy.attack_range, attack_damage=enemy.attack_damage,
+                                                 speed=enemy.speed, initiative=enemy.initiative, max_targets=1,
+                                                 level=1, position=50)
 
-                    eventlogs.append(
-                        EventLog(event=event,
-                                 htclass='text-warning',
-                                 log=f'Encountered lvl {e.level} {e.name}!')
-                    )
+                        eventlogs.append(
+                            EventLog(event=event,
+                                     htclass='text-warning',
+                                     log=f'Encountered lvl {e.level} {e.name}!')
+                        )
 
-                EventLog.objects.bulk_create(eventlogs)
+                    EventLog.objects.bulk_create(eventlogs)
 
         return event
 
     @staticmethod
-    def process_event_data(player: Player, full: bool = False) -> dict:
-        event_data = {'log': [{'log': 'Exploring...', 'htclass': 'text-white'}]}
+    def process_event_data(player: Player, full: bool = False) -> tuple[dict, bool]:
+        event_data = {'log': [{'log': 'Exploring...', 'htclass': 'text-white'}], 'players': None, 'enemies': None}
         event = player.event
         location = player.location
+        joined = False
 
         # If player is not already in an event, try to put them in one
         if not player.event:
@@ -196,6 +198,7 @@ class BaseView(View):
             if event:
                 player.event = event
                 player.save(update_fields=['event', ])
+                joined = True
 
         if location.type == 'D' and event:
             event_data = process_dungeon_event(player, event, full)
@@ -203,7 +206,7 @@ class BaseView(View):
         if location.type == 'T' and event:
             event_data = process_town_event(player, event, full)
 
-        return event_data
+        return event_data, joined
 
 
 class UserProfileView(LoginRequiredMixin, TemplateView):
@@ -426,7 +429,7 @@ class Map(BaseView):
                 str_partials = []
                 recent_messages = self.get_region_messages(player=player)
                 region_players = self.get_region_players(region=player.location.region)
-                event_data = self.process_event_data(player=player)
+                event_data, event_joined = self.process_event_data(player=player)
 
                 if player.new_status:
                     context['character'] = player
@@ -443,7 +446,44 @@ class Map(BaseView):
 
                 if event_data:
                     context['event'] = event_data
-                    partials.append('partials/event.html')
+
+                    # Full response
+                    if event_joined:
+                        partials.append('partials/event.html')
+
+                    # Logs, movement, and death updates only (no re-rendering svgs)
+                    else:
+                        if event_data['enemies']:
+                                move_commands = [(f"document.getElementById('svg-{enemy.public_id}')"
+                                                  f".setAttribute('style', 'top: {enemy.top}%;"
+                                                  f" left: {enemy.left}%; transform: translate(-50%, -50%);"
+                                                  f" width: 3rem; height: 3rem; z-index: 1;');")
+                                                 for enemy in event_data['enemies']]
+
+                                death_commands = [(f"document.getElementById('svg-{enemy.public_id}')"
+                                                  f".classList.add('defeat-animate');")
+                                                  for enemy in event_data['enemies'] if enemy.dead]
+
+                                js_commands = " ".join(move_commands + death_commands)
+
+                                command_partial = f'''
+                                <div id="htmx-receiver" hx-swap-oob="true" 
+                                     hx-on::after-settle="{js_commands}">
+                                </div>
+                                '''
+
+                                str_partials.append(command_partial)
+
+                        log_partial = """
+                            <div id="event-log-swap"
+                                 hx-swap-oob="afterbegin">
+                                {% for log in event.log %}
+                                <div class="{{ log.htclass }}">{{ log.log }}</div>
+                                {% endfor %}
+                            </div>
+                        """
+
+                        str_partials.append(log_partial)
 
                 if player.new_location:
                     player.new_location = False
@@ -470,7 +510,7 @@ class Map(BaseView):
                 recent_messages = self.get_region_messages(player=player, full=True)
                 region_players = self.get_region_players(region=player.location.region)
                 context['travel'] = self.get_travel_data(player=player)
-                context['event'] = self.process_event_data(player=player, full=True)
+                context['event'], _ = self.process_event_data(player=player, full=True)
                 context['region_players'] = region_players
                 context['messages'] = recent_messages
                 context['character'] = player
@@ -540,7 +580,7 @@ class Travel(BaseView):
                 player = Player.objects.select_related('location__region__world', 'event', 'owner').get(pk=player.id)
 
                 # Update and get event data
-                context['event'] = self.process_event_data(player=player, full=True)
+                context['event'], _ = self.process_event_data(player=player, full=True)
                 context['travel'] = self.get_travel_data(player=player)
                 templates = ('partials/travel.html', 'partials/event.html')
 

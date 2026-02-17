@@ -143,10 +143,17 @@
     }
 }
 
+@keyframes entranceFade {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
 /* svg animations */
 .sprite {
     /* Smoothly animate changes to top, left, and transform over 0.4 seconds */
     transition: top 0.4s ease-in-out, left 0.4s ease-in-out, opacity 0.5s ease;
+    animation: entranceFade 0.7s ease-out forwards;
+    opacity: 0;
 }
 
 .defeat-animate {

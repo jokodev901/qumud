@@ -207,10 +207,10 @@ class Enemy(Entity):
 
     @property
     def render_svg(self):
-        dead = None
+        dead = ''
 
         if self.dead:
-            dead = "defeat-animate"
+            dead = 'defeat-animate'
 
         return self.svg.format(public_id=self.public_id, top=self.top, left=self.left, dead=dead)
 

@@ -201,7 +201,7 @@ def generate_abstract_entity(seed_string: str) -> str:
     # ASSEMBLE SVG
     svg_template = f"""
     <svg id="svg-{{public_id}}" hx-ext="attribute-tools"
-     class="position-absolute sprite fade-in {{dead}}"
+     class="position-absolute sprite {{dead}}"
      style="top: {{top}}%; left: {{left}}%; transform: translate(-50%, -50%); width: 3rem; height: 3rem; z-index: 1;"
      xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
         {anim_wrapper_open}
