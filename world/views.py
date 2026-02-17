@@ -11,6 +11,7 @@ from django.db.models import Prefetch, Count
 from django.db import transaction
 
 from django.utils.html import strip_tags
+from django.template import engines
 from django.template.loader import render_to_string
 
 from rest_framework.authtoken.models import Token
@@ -18,8 +19,9 @@ from rest_framework.authtoken.models import Token
 from core.utils import generators
 from authentication.models import User
 from .models import (World, Region, Location, RegionChatMessage, Player, Enemy, EnemyTemplate,
-                     Event)
+                     Event, EventLog)
 from .forms import CharacterCreationForm, WorldCreationForm
+from .event import process_dungeon_event, process_town_event
 
 
 class BaseView(View):
@@ -81,11 +83,11 @@ class BaseView(View):
 
         messages = (RegionChatMessage.objects.all()
                     .select_related('user')
-                    .filter(region=player.location.region, sent_at__gte=time.time()-600)
-                    .order_by('-sent_at'))[:count]
+                    .filter(region=player.location.region, created_at__gte=time.time()-600)
+                    .order_by('-created_at'))[:count]
 
         if messages:
-            if (messages[0].sent_at >= player.owner.last_refresh) or full:
+            if (messages[0].created_at >= player.owner.last_refresh) or full:
                 return messages
 
         return None
@@ -93,7 +95,7 @@ class BaseView(View):
     @staticmethod
     def get_region_players(region: Region, timeout: int = 10):
         players = (User.objects.all()
-                   .filter(player__location__region=region, last_refresh__gte=time.time() - timeout)
+                   .filter(player__location__region=region, last_refresh__gte=(time.time() - timeout))
                    .order_by('alias'))
 
         return players
@@ -130,7 +132,7 @@ class BaseView(View):
             event_prefetch = Prefetch('event_set',
                                       queryset=Event.objects.all()
                                       .annotate(player_count=player_count)
-                                      .filter(active=True, player_count__lt=location.max_players))
+                                      .filter(player_count__lt=location.max_players))
             prefetch_list.append(event_prefetch)
 
             if location.type == 'D':
@@ -145,56 +147,66 @@ class BaseView(View):
             if events:
                 # Just picking first available here
                 # Consider ordering or some other rank
-                return events[0]
+                event = events[0]
 
-            # No suitable event found, so create a new one
-            delta = time.time() - location.last_event
-            ticks = math.floor(delta)
+            else:
+                # No suitable event found, so create a new one
+                delta = time.time() - location.last_event
+                ticks = math.floor(delta)
 
-            # Doing a fixed 5-second interval between events for now
-            # could make this variable or have ways to force an event
-            if location.type == 'D':
-                if ticks < location.spawn_rate:
-                    return None
+                # Doing a fixed 5-second interval between events for now
+                # could make this variable or have ways to force an event
+                if location.type == 'D':
+                    if ticks < location.spawn_rate:
+                        return None
 
-            event = Event.objects.create(location=location, last_update=time.time())
+                eventlogs = []
+                event = Event.objects.create(location=location, last_update=time.time())
 
-            if location.type == 'D':
-                etemps = location.enemytemplate_set.all()
+                if location.type == 'D':
+                    etemps = location.enemytemplate_set.all()
 
-                # Just spawn one of each enemy type for now
-                for enemy in etemps:
-                    for _ in range(4):
-                        Enemy.objects.create(template=enemy, event=event, name=enemy.name,
-                                             max_health=enemy.max_health, health=enemy.max_health,
-                                             attack_range=enemy.attack_range, attack_damage=enemy.attack_damage,
-                                             speed=enemy.speed, initiative=enemy.initiative, max_targets=1, level=1)
+                    # Just spawn one of each enemy type for now
+                    for enemy in etemps:
+                        e = Enemy.objects.create(svg=enemy.svg, event=event, name=enemy.name,
+                                                 max_health=enemy.max_health, health=enemy.max_health,
+                                                 attack_range=enemy.attack_range, attack_damage=enemy.attack_damage,
+                                                 speed=enemy.speed, initiative=enemy.initiative, max_targets=1,
+                                                 level=1, position=50)
+
+                        eventlogs.append(
+                            EventLog(event=event,
+                                     htclass='text-warning',
+                                     log=f'Encountered lvl {e.level} {e.name}!')
+                        )
+
+                    EventLog.objects.bulk_create(eventlogs)
 
         return event
 
     @staticmethod
-    def process_event_data(player: Player, full: bool = False) -> dict:
-        context = {}
-        event = None
+    def process_event_data(player: Player, full: bool = False) -> tuple[dict, bool]:
+        event_data = {'log': [{'log': 'Exploring...', 'htclass': 'text-white'}], 'players': None, 'enemies': None}
+        event = player.event
+        location = player.location
+        joined = False
 
+        # If player is not already in an event, try to put them in one
         if not player.event:
-            location = player.location
             event = BaseView.get_or_create_event(location)
 
             if event:
                 player.event = event
                 player.save(update_fields=['event', ])
+                joined = True
 
-        elif (player.event.last_update >= player.owner.last_refresh) or full:
-            event = player.event
+        if location.type == 'D' and event:
+            event_data = process_dungeon_event(player, event, full)
 
-        if event:
-            enemies = Enemy.objects.select_related('template').filter(event=event)
-            players = Player.objects.filter(event=event).exclude(pk=player.id)
-            context['enemies'] = enemies
-            context['players'] = players
+        if location.type == 'T' and event:
+            event_data = process_town_event(player, event, full)
 
-        return context
+        return event_data, joined
 
 
 class UserProfileView(LoginRequiredMixin, TemplateView):
@@ -359,7 +371,8 @@ class SelectWorld(BaseView):
                                                                   biome=region_data['biome'], count=5)
 
                         for enemy in enemy_temps:
-                            EnemyTemplate.objects.create(location=d, name=enemy['name'], svg=enemy['svg'])
+                            EnemyTemplate.objects.create(location=d, name=enemy['name'], svg=enemy['svg'],
+                                                         max_health=enemy['max_health'])
 
                     world.save()
 
@@ -384,12 +397,21 @@ class SelectWorld(BaseView):
 class Map(BaseView):
     template_name = 'map.html'
 
-    def render_partials(self, partials, context):
+    def render_partials(self, request, partials, str_partials, context):
         """
-        Takes a list of template paths and returns a combined HttpResponse.
+        Takes a list of template paths OR raw strings and returns a combined HttpResponse.
         """
-        html = "".join([render_to_string(partial, context) for partial in partials])
-        return HttpResponse(html)
+        django_engine = engines['django']
+        html_parts = []
+
+        for partial in partials:
+            html_parts.append(render_to_string(partial, context, request=request))
+
+        for partial in str_partials:
+            template_obj = django_engine.from_string(partial)
+            html_parts.append(template_obj.render(context, request=request))
+
+        return HttpResponse("".join(html_parts))
 
     def get(self, request):
         player = self.prep_player(['location__region__world', 'event', 'owner'])
@@ -403,49 +425,83 @@ class Map(BaseView):
         try:
             # Render partials (update trigger)
             if request.GET.get('trigger', None) == 'update':
-                delta = time.time() - player.owner.last_refresh
-                ticks = math.floor(delta)
+                partials = []
+                str_partials = []
+                recent_messages = self.get_region_messages(player=player)
+                region_players = self.get_region_players(region=player.location.region)
+                event_data, event_joined = self.process_event_data(player=player)
 
-                if ticks >= 1:
-                    partials = []
-                    recent_messages = self.get_region_messages(player=player)
-                    region_players = self.get_region_players(region=player.location.region)
-                    event_data = self.process_event_data(player=player)
+                if player.new_status:
+                    context['character'] = player
+                    context['character_health_perc'] = player.health_perc
+                    partials.append('partials/status.html')
 
-                    if player.new_status:
-                        context['character'] = player
-                        context['character_health_perc'] = player.health_perc
-                        partials.append('partials/status.html')
+                if recent_messages:
+                    context['messages'] = recent_messages
+                    partials.append('partials/region_chat.html')
 
-                    if recent_messages:
-                        context['messages'] = recent_messages
-                        partials.append('partials/region_chat.html')
+                if region_players:
+                    context['region_players'] = region_players
+                    partials.append('partials/region_players.html')
 
-                    if region_players:
-                        context['region_players'] = region_players
-                        partials.append('partials/region_players.html')
+                if event_data:
+                    context['event'] = event_data
 
-                    if event_data:
-                        context['event'] = event_data
+                    # Full response
+                    if event_joined:
                         partials.append('partials/event.html')
 
-                    if player.new_location:
-                        player.new_location = False
-                        player_updates.append('new_location')
+                    # Logs, movement, and death updates only (no re-rendering svgs)
+                    else:
+                        if event_data['enemies']:
+                                move_commands = [(f"document.getElementById('svg-{enemy.public_id}')"
+                                                  f".setAttribute('style', 'top: {enemy.top}%;"
+                                                  f" left: {enemy.left}%; transform: translate(-50%, -50%);"
+                                                  f" width: 3rem; height: 3rem; z-index: 1;');")
+                                                 for enemy in event_data['enemies']]
 
-                    if player.new_status:
-                        player.new_status = False
-                        player_updates.append('new_status')
+                                death_commands = [(f"document.getElementById('svg-{enemy.public_id}')"
+                                                  f".classList.add('defeat-animate');")
+                                                  for enemy in event_data['enemies'] if enemy.dead]
 
-                    if player_updates:
-                        with transaction.atomic():
-                            player.save(update_fields=player_updates)
+                                js_commands = " ".join(move_commands + death_commands)
 
-                    if partials:
-                        return self.render_partials(partials, context)
+                                command_partial = f'''
+                                <div id="htmx-receiver" hx-swap-oob="true" 
+                                     hx-on::after-settle="{js_commands}">
+                                </div>
+                                '''
 
-                    player.owner.last_refresh = time.time()
-                    player.owner.save(update_fields=['last_refresh'])
+                                str_partials.append(command_partial)
+
+                        log_partial = """
+                            <div id="event-log-swap"
+                                 hx-swap-oob="afterbegin">
+                                {% for log in event.log %}
+                                <div class="{{ log.htclass }}">{{ log.log }}</div>
+                                {% endfor %}
+                            </div>
+                        """
+
+                        str_partials.append(log_partial)
+
+                if player.new_location:
+                    player.new_location = False
+                    player_updates.append('new_location')
+
+                if player.new_status:
+                    player.new_status = False
+                    player_updates.append('new_status')
+
+                if player_updates:
+                    with transaction.atomic():
+                        player.save(update_fields=player_updates)
+
+                player.owner.last_refresh = time.time()
+                player.owner.save(update_fields=['last_refresh'])
+
+                if partials:
+                    return self.render_partials(request, partials, str_partials, context)
 
                 return HttpResponse(status=204)
 
@@ -454,7 +510,7 @@ class Map(BaseView):
                 recent_messages = self.get_region_messages(player=player, full=True)
                 region_players = self.get_region_players(region=player.location.region)
                 context['travel'] = self.get_travel_data(player=player)
-                context['event'] = self.process_event_data(player=player, full=True)
+                context['event'], _ = self.process_event_data(player=player, full=True)
                 context['region_players'] = region_players
                 context['messages'] = recent_messages
                 context['character'] = player
@@ -506,6 +562,12 @@ class Travel(BaseView):
                 with transaction.atomic():
                     # Remove event since we have left the location
                     if player.event:
+                        # If we are the last player to leave an event, then set it to inactive
+                        event_players = player.event.player_set.all().exclude(pk=player.id)
+                        if not event_players:
+                            player.event.active = False
+                            player.event.save(update_fields=["active", ])
+
                         player.event = None
                         update_fields.append('event')
 
@@ -518,7 +580,7 @@ class Travel(BaseView):
                 player = Player.objects.select_related('location__region__world', 'event', 'owner').get(pk=player.id)
 
                 # Update and get event data
-                context['event'] = self.process_event_data(player=player, full=True)
+                context['event'], _ = self.process_event_data(player=player, full=True)
                 context['travel'] = self.get_travel_data(player=player)
                 templates = ('partials/travel.html', 'partials/event.html')
 

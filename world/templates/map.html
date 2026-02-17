@@ -11,20 +11,15 @@
                 </div>
                 <div id="event-card-body" class="card-body d-flex flex-column minheight0">
                     <div id="event-card-swap" class="d-flex flex-column flex-grow-1 minheight0">
-
-                        <div class="event-graphic position-relative flex-shrink-0" style="min-height: 200px;">
-                            <span class="text-muted italic">Graphic Placeholder</span>
+                        <div id="event-window-swap" class="event-graphic position-relative flex-shrink-0" style="min-height: 200px;">
                             {% for enemy in event.enemies %}
-                            {{ enemy.template.svg|safe }}
+                            {{ enemy.render_svg|safe }}
                             {% endfor %}
                         </div>
 
-                        <div class="scroll-window my-3 overflow-auto flex-grow-1 minheight0">
-                            {% for enemy in event.enemies %}
-                            <div class="text-success">You encountered a lvl {{ enemy.level }} {{ enemy.name }}</div>
-                            {% endfor %}
-                            {% for player in event.players %}
-                            <div class="text-white">You encountered player {{ player.name }}</div>
+                        <div id="event-log-swap" class="scroll-window my-3 overflow-auto flex-grow-1 minheight0">
+                            {% for log in event.log %}
+                            <div class="{{ log.htclass }}">{{ log.log }}</div>
                             {% endfor %}
                         </div>
 
@@ -170,31 +165,11 @@
     </div>
 </div>
 <script>
-    function moveSprites() {
-        const sprites = document.querySelectorAll('.sprite');
-
-        sprites.forEach((sprite) => {
-            // Only move if the sprite is NOT defeated
-            if (!sprite.classList.contains('defeat-animate')) {
-                const randomTop = Math.floor(Math.random() * 60) + 20;
-                const randomLeft = Math.floor(Math.random() * 60) + 20;
-
-                sprite.style.top = `${randomTop}%`;
-                sprite.style.left = `${randomLeft}%`;
-            }
-        });
+    function moveEntity(id, top, left) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.style.top = top+'%'; el.style.left = left+'%';
     }
-
-    // Start the movement
-    const movementInterval = setInterval(moveSprites, 2000);
-
-    // TEST 1: Defeat the first sprite after 10 seconds
-    setTimeout(() => {
-        const sprites = document.querySelectorAll('.sprite');
-        if (sprites[0]) {
-            console.log("Defeating Sprite 1...");
-            sprites[0].classList.add('defeat-animate');
-        }
-    }, 10000);
+}
 </script>
 {% endblock %}

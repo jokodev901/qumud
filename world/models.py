@@ -1,3 +1,4 @@
+import random
 import uuid
 import time
 import math
@@ -6,7 +7,14 @@ from django.db import models
 from authentication.models import User
 
 
-class World(models.Model):
+class BaseModel(models.Model):
+    created_at = models.FloatField(default=time.time, db_index=True)
+
+    class Meta:
+        abstract = True
+
+
+class World(BaseModel):
     public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     name = models.CharField('name', max_length=64, unique=True, db_index=True)
 
@@ -16,7 +24,7 @@ class World(models.Model):
         return self.name
 
 
-class Region(models.Model):
+class Region(BaseModel):
     REGION_BIOMES = (
         ('D', 'Desert'),
         ('F', 'Forest'),
@@ -37,7 +45,7 @@ class Region(models.Model):
         return self.name
 
 
-class Location(models.Model):
+class Location(BaseModel):
     LOCATION_TYPES = (
         ('T', 'Town'),
         ('D', 'Dungeon'),
@@ -57,7 +65,7 @@ class Location(models.Model):
         return self.name
 
 
-class Event(models.Model):
+class Event(BaseModel):
     public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     size = models.IntegerField(default=100)
     active = models.BooleanField(default=True, db_index=True)
@@ -76,7 +84,14 @@ class Event(models.Model):
         return f'{self.location.name} Event {str(self.pk)}'
 
 
-class EnemyTemplate(models.Model):
+class EventLog(BaseModel):
+    htclass = models.CharField(max_length=64, blank=True, null=True)
+    log = models.TextField()
+
+    event = models.ForeignKey(Event, on_delete=models.CASCADE)
+
+
+class EnemyTemplate(BaseModel):
     svg = models.TextField()
     name = models.CharField('Name', max_length=32)
     max_health = models.IntegerField(default=1)
@@ -93,7 +108,7 @@ class EnemyTemplate(models.Model):
         return self.name
 
 
-class Entity(models.Model):
+class Entity(BaseModel):
     ENTITY_TYPES = (
         ('P', 'Player'),
         ('E', 'Enemy'),
@@ -160,13 +175,8 @@ class Player(Entity):
             if update_fields is not None:
                 update_set = set(update_fields)
 
-                event_update = not update_set.isdisjoint(self.EVENT_FIELDS)
                 status_update = not update_set.isdisjoint(self.STATUS_FIELDS)
                 location_update = not update_set.isdisjoint(self.LOCATION_FIELDS)
-
-                if event_update or location_update:
-                    event_ids = filter(None, (self._previous_event_id, self.event_id))
-                    Event.objects.filter(id__in=event_ids).update(last_update=time.time())
 
                 if location_update:
                     self.new_location = True
@@ -181,34 +191,37 @@ class Player(Entity):
         super().save(*args, **kwargs)
 
 
+class PlayerLog(BaseModel):
+    htclass = models.CharField(max_length=64, blank=True, null=True)
+    log = models.TextField()
+
+    player = models.ForeignKey(Player, on_delete=models.CASCADE)
+
+
 class Enemy(Entity):
-    # Relationships
-    template = models.ForeignKey(EnemyTemplate,  null=True, blank=True, on_delete=models.CASCADE)
     event = models.ForeignKey(Event, null=True, blank=True, on_delete=models.CASCADE)
+    dead = models.FloatField(null=True, blank=True)
+    svg = models.TextField()
+    top = models.IntegerField(default=50)
+    left = models.IntegerField(default=50)
+
+    @property
+    def render_svg(self):
+        dead = ''
+
+        if self.dead:
+            dead = 'defeat-animate'
+
+        return self.svg.format(public_id=self.public_id, top=self.top, left=self.left, dead=dead)
 
     def save(self, *args, **kwargs):
         if not self.id:
             self.type = 'E'
 
-        else:
-            update_fields = kwargs.get('update_fields')
-            # push an updates to fields or related models when relevant field changes are made
-
-            if update_fields is not None:
-                update_set = set(update_fields)
-
-                event_update = not update_set.isdisjoint(self.EVENT_FIELDS)
-
-                if event_update:
-                    Event.objects.filter(id=self.event_id).update(last_update=time.time())
-
-                kwargs['update_fields'] = update_set
-
         super().save(*args, **kwargs)
 
 
-class RegionChatMessage(models.Model):
-    sent_at = models.FloatField(default=time.time)
+class RegionChatMessage(BaseModel):
     message = models.TextField()
 
     region = models.ForeignKey(Region, on_delete=models.CASCADE)
