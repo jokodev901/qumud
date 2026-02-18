@@ -18,9 +18,13 @@
                         </div>
 
                         <div id="event-log-swap" class="scroll-window my-3 overflow-auto flex-grow-1 minheight0">
-                            {% for log in event.log %}
-                            <div class="{{ log.htclass }}">{{ log.log }}</div>
-                            {% endfor %}
+                            <div class="log-wrapper">
+                                <div class="log-content">
+                                    {% for log in event.log %}
+                                    <div class="{{ log.htclass }}">{{ log.log }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
                         </div>
 
                         <div class="d-flex gap-2 justify-content-end mt-auto flex-shrink-0">
@@ -165,11 +169,27 @@
     </div>
 </div>
 <script>
-    function moveEntity(id, top, left) {
-    const el = document.getElementById(id);
-    if (el) {
-        el.style.top = top+'%'; el.style.left = left+'%';
+document.addEventListener('htmx:oobAfterSwap', (event) => {
+    if (event.detail.target && event.detail.target.id === "event-log-swap") {
+        const MAX_LOGS = 50;
+        const container = event.detail.target;
+
+        const logs = Array.from(container.querySelectorAll('.log-wrapper'));
+
+        if (logs.length > MAX_LOGS) {
+            const toPrune = logs.slice(MAX_LOGS);
+
+            toPrune.forEach(el => {
+                el.classList.add('log-pruning');
+
+                setTimeout(() => {
+                    if (el.parentNode) {
+                        el.remove();
+                    }
+                }, 500);
+            });
+        }
     }
-}
+});
 </script>
 {% endblock %}

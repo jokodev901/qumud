@@ -16,7 +16,7 @@ from django.template.loader import render_to_string
 
 from rest_framework.authtoken.models import Token
 
-from core.utils import generators
+from core.utils import generators, utils
 from authentication.models import User
 from .models import (World, Region, Location, RegionChatMessage, Player, Enemy, EnemyTemplate,
                      Event, EventLog)
@@ -165,18 +165,31 @@ class BaseView(View):
 
                 if location.type == 'D':
                     etemps = location.enemytemplate_set.all()
+                    e_positions = []
 
                     # Just spawn one of each enemy type for now
                     for enemy in etemps:
+                        position = 45 + enemy.initiative
+                        left = utils.clamp(((position / event.size) * 100), 5, 95)
+                        pos_round = 5 * round(left / 5)
+                        e_positions.append(pos_round)
+                        pos_count = e_positions.count(pos_round)
+                        flip = 1
+
+                        if pos_count % 2 == 0:
+                            flip = -1
+
+                        top = utils.clamp(50 + (math.floor(pos_count / 2) * 10 * flip), 5, 95)
+
                         e = Enemy.objects.create(svg=enemy.svg, event=event, name=enemy.name,
                                                  max_health=enemy.max_health, health=enemy.max_health,
                                                  attack_range=enemy.attack_range, attack_damage=enemy.attack_damage,
                                                  speed=enemy.speed, initiative=enemy.initiative, max_targets=1,
-                                                 level=1, position=50)
+                                                 level=1, position=position, left=left, top=top)
 
                         eventlogs.append(
                             EventLog(event=event,
-                                     htclass='text-warning',
+                                     htclass='text-warning log-entry',
                                      log=f'Encountered lvl {e.level} {e.name}!')
                         )
 
@@ -186,7 +199,7 @@ class BaseView(View):
 
     @staticmethod
     def process_event_data(player: Player, full: bool = False) -> tuple[dict, bool]:
-        event_data = {'log': [{'log': 'Exploring...', 'htclass': 'text-white'}], 'players': None, 'enemies': None}
+        event_data = {'log': [{'log': 'Exploring...', 'htclass': 'text-white log-entry'}], 'players': None, 'enemies': None}
         event = player.event
         location = player.location
         joined = False
@@ -478,7 +491,11 @@ class Map(BaseView):
                             <div id="event-log-swap"
                                  hx-swap-oob="afterbegin">
                                 {% for log in event.log %}
-                                <div class="{{ log.htclass }}">{{ log.log }}</div>
+                                <div class="log-wrapper">
+                                    <div class="log-content">
+                                        <div class="{{ log.htclass }}">{{ log.log }}</div>
+                                    </div>
+                                </div>
                                 {% endfor %}
                             </div>
                         """
@@ -538,12 +555,7 @@ class Map(BaseView):
 
 
 class Travel(BaseView):
-    def render_partials(self, partials, context):
-        """
-        Takes a list of template paths and returns a combined HttpResponse.
-        """
-        html = "".join([render_to_string(partial, context) for partial in partials])
-        return HttpResponse(html)
+    template = 'partials/travel.html'
 
     def post(self, request):
         player = self.prep_player(['location__region',
@@ -582,12 +594,11 @@ class Travel(BaseView):
                 # Update and get event data
                 context['event'], _ = self.process_event_data(player=player, full=True)
                 context['travel'] = self.get_travel_data(player=player)
-                templates = ('partials/travel.html', 'partials/event.html')
 
                 player.owner.last_refresh = time.time()
                 player.owner.save(update_fields=['last_refresh'])
 
-                return self.render_partials(templates, context)
+                return render(request, self.template, context)
 
             return HttpResponse('Invalid selection', status=400)
 

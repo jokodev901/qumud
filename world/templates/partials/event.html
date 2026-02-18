@@ -8,6 +8,10 @@
  <div id="event-log-swap"
       hx-swap-oob="afterbegin">
     {% for log in event.log %}
-    <div class="{{ log.htclass }}">{{ log.log }}</div>
+    <div class="log-wrapper">
+        <div class="log-content">
+            <div class="{{ log.htclass }}">{{ log.log }}</div>
+        </div>
+    </div>
     {% endfor %}
 </div>

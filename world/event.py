@@ -6,10 +6,7 @@ from django.db import transaction
 from django.db.models import Prefetch
 
 from world.models import Event, Player, Enemy, EventLog, PlayerLog, Location
-
-
-def clamp(n, minn, maxn):
-    return max(min(maxn, n), minn)
+from core.utils import utils
 
 
 def process_town_event(player: Player, event: Event, full: bool) -> dict | None:
@@ -63,20 +60,22 @@ def process_dungeon_event(player: Player, event: Event, full: bool) -> dict | No
 
         if ticks > 0:
             for tick in range(ticks):
+                e_positions = []
+
                 for enemy in event_lock.enemies[:]:
                     dmg = random.choice(range(3))
                     enemy.health -= dmg
 
                     newlogs.append(
                         EventLog(event=event_lock,
-                                 htclass='text-danger',
+                                 htclass='text-danger log-entry',
                                  log=f'{enemy.name} took {dmg} damage')
                     )
 
                     if enemy.health < 1:
                         newlogs.append(
                             EventLog(event=event_lock,
-                                     htclass='text-primary',
+                                     htclass='text-primary log-entry',
                                      log=f'{enemy.name} is dead')
                         )
                         enemy.dead = time.time()
@@ -85,13 +84,25 @@ def process_dungeon_event(player: Player, event: Event, full: bool) -> dict | No
                         continue
 
                     enemy.position = (enemy.position + random.choice((-3, -2, -1, 0, 1, 2, 3))) % event_lock.size
-                    enemy.left = clamp(((enemy.position / event_lock.size) * 100), 5, 95)
+                    enemy.left = utils.clamp(((enemy.position / event_lock.size) * 100), 5, 95)
+
+                    pos_round = 5 * round(enemy.left / 5)
+                    e_positions.append(pos_round)
+                    pos_count = e_positions.count(pos_round)
+                    flip = 1
+
+                    if pos_count % 2 == 0:
+                        flip = -1
+
+                    # just need to flip this between pos or neg based on pos_count % 2
+                    enemy.top = utils.clamp(50 + (math.floor(pos_count / 2) * 10 * flip), 5, 95)
+
 
                 if not event_lock.enemies:
                     # All enemies are dead, log it and stop processing ticks
                     newlogs.append(
                         EventLog(event=event_lock,
-                                 htclass='text-success',
+                                 htclass='text-success log-entry',
                                  log=f'All enemies defeated!')
                     )
                     break
