@@ -133,7 +133,7 @@ class BaseView(View):
             event_prefetch = Prefetch('event_set',
                                       queryset=Event.objects.all()
                                       .annotate(player_count=player_count)
-                                      .filter(player_count__lt=location.max_players))
+                                      .filter(player_count__lt=location.max_players, ended=0))
             prefetch_list.append(event_prefetch)
 
             if location.type == 'D':
@@ -170,7 +170,7 @@ class BaseView(View):
 
                     # Just spawn one of each enemy type for now
                     for enemy in etemps:
-                        position = 45 + enemy.initiative
+                        position = 55 + enemy.initiative
                         left = utils.clamp(((position / event.size) * 100), 5, 95)
                         pos_round = 5 * round(left / 5)
                         e_positions.append(pos_round)
@@ -182,7 +182,7 @@ class BaseView(View):
 
                         top = utils.clamp(50 + (math.floor(pos_count / 2) * 10 * flip), 5, 95)
 
-                        e = Enemy.objects.create(svg=enemy.svg, event=event, name=enemy.name,
+                        e = Enemy.objects.create(svg=enemy.svg, event=event, event_joined=time.time(), name=enemy.name,
                                                  max_health=enemy.max_health, health=enemy.max_health,
                                                  attack_range=enemy.attack_range, attack_damage=enemy.attack_damage,
                                                  speed=enemy.speed, initiative=enemy.initiative, max_targets=1,
@@ -213,7 +213,9 @@ class BaseView(View):
             if event:
                 player.event = event
                 player.position = 40
-                player.save(update_fields=['event', 'position'])
+                player.event_joined = time.time()
+                player.save(update_fields=['event', 'position', 'event_joined'])
+
                 joined = True
 
         if location.type == 'D' and event:
@@ -381,7 +383,7 @@ class SelectWorld(BaseView):
 
                     for dungeon in region_data['locations']['dungeons']:
                         d = Location.objects.create(name=dungeon['name'], level=dungeon['level'], region=region,
-                                                    type='D', spawn_rate=5, max_players=2)
+                                                    type='D', spawn_rate=5, max_players=3)
 
                         enemy_temps = generators.generate_enemies(seed=dungeon['name'], level=dungeon['level'],
                                                                   biome=region_data['biome'], count=5)
@@ -413,7 +415,7 @@ class SelectWorld(BaseView):
 class Map(BaseView):
     template_name = 'map.html'
 
-    def render_partials(self, request, partials, str_partials, context):
+    def render_partials(self, request, partials, str_partials, headers, context):
         """
         Takes a list of template paths OR raw strings and returns a combined HttpResponse.
         """
@@ -427,7 +429,7 @@ class Map(BaseView):
             template_obj = django_engine.from_string(partial)
             html_parts.append(template_obj.render(context, request=request))
 
-        return HttpResponse("".join(html_parts))
+        return HttpResponse("".join(html_parts), headers=headers)
 
     def get(self, request):
         player = self.prep_player(['location__region__world', 'event', 'owner'])
@@ -443,6 +445,8 @@ class Map(BaseView):
             if request.GET.get('trigger', None) == 'update':
                 partials = []
                 str_partials = []
+                living_svgs = []
+                headers = {}
                 recent_messages = self.get_region_messages(player=player)
                 region_players = self.get_region_players(region=player.location.region)
                 event_data, event_joined = self.process_event_data(player=player)
@@ -470,25 +474,39 @@ class Map(BaseView):
                     # Logs, movement, and death updates only (no re-rendering svgs)
                     else:
                         if event_data['entities']:
-                                move_commands = [(f"document.getElementById('svg-{entity.public_id}')"
-                                                  f".setAttribute('style', 'top: {entity.top}%;"
-                                                  f" left: {entity.left}%; transform: translate(-50%, -50%);"
-                                                  f" width: 3rem; height: 3rem; z-index: 1;');")
-                                                 for entity in event_data['entities']]
+                            move_commands = [(f"document.getElementById('svg-{entity.public_id}')"
+                                              f".setAttribute('style', 'top: {entity.top}%;"
+                                              f" left: {entity.left}%; transform: translate(-50%, -50%);"
+                                              f" width: 3rem; height: 3rem; z-index: 1;');")
+                                             for entity in event_data['entities']]
 
-                                death_commands = [(f"document.getElementById('svg-{entity.public_id}')"
-                                                  f".classList.add('defeat-animate');")
-                                                  for entity in event_data['dead_entities']]
+                            command_partial = f'''
+                            <div id="htmx-receiver" hx-swap-oob="true" 
+                                 hx-on::after-settle="{' '.join(move_commands)}">
+                            </div>
+                            '''
 
-                                js_commands = " ".join(move_commands + death_commands)
+                            str_partials.append(command_partial)
 
-                                command_partial = f'''
-                                <div id="htmx-receiver" hx-swap-oob="true" 
-                                     hx-on::after-settle="{js_commands}">
-                                </div>
-                                '''
+                            new_svgs = [entity.render_svg for entity in event_data['entities']
+                                        if entity.event_joined >= player.owner.last_refresh]
 
-                                str_partials.append(command_partial)
+                            if new_svgs:
+                                svg_partial = f"""
+                                     <div id="event-window-swap"                                              
+                                          hx-swap-oob="afterbegin">
+                                          {''.join(new_svgs)}
+                                     </div>
+                                """
+                                str_partials.append(svg_partial)
+
+                            living_svgs = [f"svg-{entity.public_id}" for entity in event_data['entities']]
+
+                        headers['HX-Trigger'] = json.dumps({
+                            "triggerDefeatAnimation": {
+                                "activeIds": living_svgs
+                            }
+                        })
 
                         log_partial = """
                             <div id="event-log-swap"
@@ -521,9 +539,9 @@ class Map(BaseView):
                 player.owner.save(update_fields=['last_refresh'])
 
                 if partials:
-                    return self.render_partials(request, partials, str_partials, context)
+                    return self.render_partials(request, partials, str_partials, headers, context)
 
-                return HttpResponse(status=204)
+                return HttpResponse(status=204, headers=headers)
 
             # Render full template ( initial load )
             else:
@@ -584,7 +602,9 @@ class Travel(BaseView):
                             player.event.save(update_fields=["active", ])
 
                         player.event = None
+                        player.event_joined = 0
                         update_fields.append('event')
+                        update_fields.append('event_joined')
 
                     player.location = selected_location
                     update_fields.append('location')

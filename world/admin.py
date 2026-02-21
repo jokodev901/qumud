@@ -79,7 +79,7 @@ class LocationAdmin(admin.ModelAdmin):
 
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
-    list_display = ('__str__', 'active', 'size', 'last_update_fmt')
+    list_display = ('__str__', 'active', 'ended_fmt', 'last_update_fmt')
     list_filter = ('active', 'location__region')
     raw_id_fields = ('location',)
     readonly_fields = ('public_id', 'last_update')
@@ -89,7 +89,11 @@ class EventAdmin(admin.ModelAdmin):
     def last_update_fmt(self, obj):
         return datetime.fromtimestamp(obj.last_update).strftime('%H:%M:%S') if obj.last_update else "-"
 
+    def ended_fmt(self, obj):
+        return datetime.fromtimestamp(obj.ended).strftime('%H:%M:%S') if obj.ended else "-"
+
     last_update_fmt.short_description = "Last Update"
+    ended_fmt.short_description = "Ended"
 
 
 @admin.register(EnemyTemplate)

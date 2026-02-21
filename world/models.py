@@ -56,7 +56,7 @@ class Location(BaseModel):
     level = models.IntegerField('level', default=1)
     last_event = models.FloatField(null=True, blank=True, default=0)
     type = models.CharField('Location type', max_length=1, choices=LOCATION_TYPES)
-    max_players = models.IntegerField(default=1)
+    max_players = models.IntegerField(default=3)
     spawn_rate = models.IntegerField(null=True, default=5)
 
     region = models.ForeignKey(Region, on_delete=models.CASCADE)
@@ -69,6 +69,7 @@ class Event(BaseModel):
     public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     size = models.IntegerField(default=100)
     active = models.BooleanField(default=True, db_index=True)
+    ended = models.FloatField(default=0)
     last_update = models.FloatField(default=0)
 
     location = models.ForeignKey(Location, on_delete=models.CASCADE)
@@ -141,6 +142,7 @@ class Entity(BaseModel):
     left = models.IntegerField(default=50)
     position = models.IntegerField(default=None, null=True, db_index=True)
     dead = models.FloatField(null=True, blank=True)
+    event_joined = models.FloatField(default=0)
 
     # References
     target = models.ForeignKey('Entity', null=True, blank=True, on_delete=models.SET_NULL)

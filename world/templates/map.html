@@ -220,5 +220,18 @@ document.addEventListener('htmx:oobAfterSwap', (event) => {
         }
     }
 });
+document.body.addEventListener('triggerDefeatAnimation', (event) => {
+    const activeIds = event.detail.activeIds || [];
+    const allSvgs = document.querySelectorAll('[id^="svg-"]');
+
+    allSvgs.forEach(element => {
+        if (!activeIds.includes(element.id)) {
+            element.classList.add('defeat-animate');
+            element.addEventListener('animationend', () => {
+                element.remove();
+            }, { once: true });
+        }
+    });
+});
 </script>
 {% endblock %}

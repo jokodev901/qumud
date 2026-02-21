@@ -13,7 +13,7 @@ def process_town_event(player: Player, event: Event, full: bool) -> dict | None:
     # Placeholder town event processing
     players = Player.objects.all().filter(event=event).exclude(pk=player.id)
 
-    return {'log': None, 'entities': players, 'dead_entities': None}
+    return {'log': [], 'entities': players, 'dead_entities': []}
 
 
 def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool = False) -> dict | None:
@@ -59,17 +59,17 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
 
         # Consider event paused while inactive (due to no players present)
         # Resume with fresh update time when a player joins again
-        if not event_lock.active:
+        if not event_lock.active and enemy_count > 0:
             Event.objects.filter(pk=event_lock.pk).update(last_update=time.time(), active=True)
             ticks = 0
 
-        # If no enemies are left then event is over, update location last_event and delete
+        # If no enemies are left then event is over, update location last_event and set ended
         if enemy_count == 0:
             Location.objects.filter(pk=event_lock.location_id).update(last_event=time.time())
-            Enemy.objects.filter(event=event_lock).delete()
-            Event.objects.filter(pk=event_lock.pk).delete()
+            Event.objects.filter(pk=event_lock.pk).update(ended=time.time(), active=False)
+            Player.objects.filter(pk=player.pk).update(event=None, event_joined=0)
 
-            return {'log': event_logs, 'entities': None, 'dead_entities': None}
+            return {'log': event_logs, 'entities': [], 'dead_entities': dead_entities}
 
         # player_logs = {player.id: [] for player in event_lock.players}
         killed_entities = []
