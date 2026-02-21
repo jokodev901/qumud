@@ -2,6 +2,7 @@
 
 {% block content %}
 <div hx-get="{% url 'map' %}" hx-trigger="every 1s" hx-vals='{"trigger": "update"}' hx-swap="none"></div>
+<button hx-get="{% url 'map' %}" hx-vals='{"trigger": "update"}' hx-swap="none">DEBUG</button>
 <div class="container">
     <div class="row g-3 d-flex">
         <div class="col-md-7 col-lg-8 order-1 d-flex" style="height: 600px;">
@@ -12,8 +13,8 @@
                 <div id="event-card-body" class="card-body d-flex flex-column minheight0">
                     <div id="event-card-swap" class="d-flex flex-column flex-grow-1 minheight0">
                         <div id="event-window-swap" class="event-graphic position-relative flex-shrink-0" style="min-height: 200px;">
-                            {% for enemy in event.enemies %}
-                            {{ enemy.render_svg|safe }}
+                            {% for entity in event.entities %}
+                            {{ entity.render_svg|safe }}
                             {% endfor %}
                         </div>
 
@@ -162,7 +163,35 @@
             <div id="travel-card" class="card w-100 d-flex flex-column" hx-target="#travel-card-body">
                 <div class="card-header">Travel</div>
                     <div id="travel-card-body" class="card-body d-flex flex-column flex-grow-1 minheight0">
-                    {% include 'partials/travel.html' %}
+                        <div class="small fw-bold">World: <span class="fw-light">{{ travel.world }}</span></div>
+                        <div class="small fw-bold">Region: <span class="fw-light">{{ travel.region }} ({{ travel.region.get_biome_display }})</span></div>
+                        <div class="small fw-bold mb-4">Current Location: <span class="fw-light">{{ travel.current_location }}</span></div>
+
+                        <h6 class="small mb-2">Towns</h6>
+                        <div class="d-flex flex-wrap gap-2 mb-4">
+                        {% for town in travel.towns %}
+                            {% if travel.current_location != town %}
+                                <a class="btn btn-sm btn-dark-outline"
+                                   hx-post='{% url "travel" %}'
+                                   hx-vals='{"public_id": "{{ town.public_id }}"}'>
+                                   {{ town.name }}
+                                </a>
+                            {% endif %}
+                        {% endfor %}
+                        </div>
+
+                        <h6 class="small mb-2">Dungeons</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                        {% for dungeon in travel.dungeons %}
+                            {% if travel.current_location != dungeon %}
+                                <a class="btn btn-sm btn-dark-outline"
+                                   hx-post='{% url "travel" %}'
+                                   hx-vals='{"public_id": "{{ dungeon.public_id }}"}'>
+                                   {{ dungeon.name }} (lvl {{ dungeon.level }})
+                                </a>
+                            {% endif %}
+                        {% endfor %}
+                        </div>
                     </div>
             </div>
         </div>

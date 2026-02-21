@@ -7,7 +7,7 @@ from django.views.generic import TemplateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect, render, reverse
 from django.http import HttpResponse
-from django.db.models import Prefetch, Count
+from django.db.models import Prefetch, Count, Q
 from django.db import transaction
 
 from django.utils.html import strip_tags
@@ -128,7 +128,8 @@ class BaseView(View):
         with transaction.atomic():
             # Find existing events with less than player_limit number of players
             prefetch_list = []
-            player_count = Count("player")
+
+            player_count = Count("entity", filter=Q(entity__type='P'))
             event_prefetch = Prefetch('event_set',
                                       queryset=Event.objects.all()
                                       .annotate(player_count=player_count)
@@ -199,7 +200,8 @@ class BaseView(View):
 
     @staticmethod
     def process_event_data(player: Player, full: bool = False) -> tuple[dict, bool]:
-        event_data = {'log': [{'log': 'Exploring...', 'htclass': 'text-white log-entry'}], 'players': None, 'enemies': None}
+        event_data = {'log': [{'log': 'Exploring...', 'htclass': 'text-white log-entry'}],
+                      'entities': None, 'dead_entities': None}
         event = player.event
         location = player.location
         joined = False
@@ -210,7 +212,8 @@ class BaseView(View):
 
             if event:
                 player.event = event
-                player.save(update_fields=['event', ])
+                player.position = 40
+                player.save(update_fields=['event', 'position'])
                 joined = True
 
         if location.type == 'D' and event:
@@ -466,16 +469,16 @@ class Map(BaseView):
 
                     # Logs, movement, and death updates only (no re-rendering svgs)
                     else:
-                        if event_data['enemies']:
-                                move_commands = [(f"document.getElementById('svg-{enemy.public_id}')"
-                                                  f".setAttribute('style', 'top: {enemy.top}%;"
-                                                  f" left: {enemy.left}%; transform: translate(-50%, -50%);"
+                        if event_data['entities']:
+                                move_commands = [(f"document.getElementById('svg-{entity.public_id}')"
+                                                  f".setAttribute('style', 'top: {entity.top}%;"
+                                                  f" left: {entity.left}%; transform: translate(-50%, -50%);"
                                                   f" width: 3rem; height: 3rem; z-index: 1;');")
-                                                 for enemy in event_data['enemies']]
+                                                 for entity in event_data['entities']]
 
-                                death_commands = [(f"document.getElementById('svg-{enemy.public_id}')"
+                                death_commands = [(f"document.getElementById('svg-{entity.public_id}')"
                                                   f".classList.add('defeat-animate');")
-                                                  for enemy in event_data['enemies'] if enemy.dead]
+                                                  for entity in event_data['dead_entities']]
 
                                 js_commands = " ".join(move_commands + death_commands)
 
@@ -575,7 +578,7 @@ class Travel(BaseView):
                     # Remove event since we have left the location
                     if player.event:
                         # If we are the last player to leave an event, then set it to inactive
-                        event_players = player.event.player_set.all().exclude(pk=player.id)
+                        event_players = player.event.entity_set.all().filter(type='P').exclude(pk=player.id)
                         if not event_players:
                             player.event.active = False
                             player.event.save(update_fields=["active", ])
