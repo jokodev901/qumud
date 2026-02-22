@@ -7,7 +7,6 @@ from django.views.generic import TemplateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect, render, reverse
 from django.http import HttpResponse
-from django.db.models import Prefetch, Count, Q
 from django.db import transaction
 
 from django.utils.html import strip_tags
@@ -21,7 +20,7 @@ from authentication.models import User
 from .models import (World, Region, Location, RegionChatMessage, Player, Enemy, EnemyTemplate,
                      Event, EventLog)
 from .forms import CharacterCreationForm, WorldCreationForm
-from .event import process_dungeon_event, process_town_event
+from .event import process_dungeon_event, process_town_event, get_or_create_event
 
 
 class BaseView(View):
@@ -137,85 +136,6 @@ class BaseView(View):
         return context
 
     @staticmethod
-    def get_or_create_event(location: Location) -> Event | None:
-        # We want to overflow players into the same events vs race-creating individual events
-        # select_for_update() on the location row as a transaction to ensure only one event created
-        # at a time
-
-        with transaction.atomic():
-            # Find existing events with less than player_limit number of players
-            prefetch_list = []
-
-            player_count = Count("entity", filter=Q(entity__type='P'))
-            event_prefetch = Prefetch('event_set',
-                                      queryset=Event.objects.all()
-                                      .annotate(player_count=player_count)
-                                      .filter(player_count__lt=location.max_players, ended=0))
-            prefetch_list.append(event_prefetch)
-
-            if location.type == 'D':
-                prefetch_list.append(Prefetch('enemytemplate_set'))
-
-            location_locked = (Location.objects.select_for_update()
-                                .prefetch_related(*prefetch_list)
-                                .get(id=location.id))
-
-            events = location_locked.event_set.all()
-
-            if events:
-                # Just picking first available here
-                # Consider ordering or some other rank
-                event = events[0]
-
-            else:
-                # No suitable event found, so create a new one
-                delta = time.time() - location.last_event
-                ticks = math.floor(delta)
-
-                # Doing a fixed 5-second interval between events for now
-                # could make this variable or have ways to force an event
-                if location.type == 'D':
-                    if ticks < location.spawn_rate:
-                        return None
-
-                eventlogs = []
-                event = Event.objects.create(location=location, last_update=time.time())
-
-                if location.type == 'D':
-                    etemps = location.enemytemplate_set.all()
-                    e_positions = []
-
-                    # Just spawn one of each enemy type for now
-                    for enemy in etemps:
-                        position = 55 + enemy.initiative
-                        left = utils.clamp(((position / event.size) * 100), 5, 95)
-                        pos_round = 5 * round(left / 5)
-                        e_positions.append(pos_round)
-                        pos_count = e_positions.count(pos_round)
-                        flip = 1
-
-                        if pos_count % 2 == 0:
-                            flip = -1
-
-                        top = utils.clamp(50 + (math.floor(pos_count / 2) * 10 * flip), 5, 95)
-
-                        e = Enemy.objects.create(svg=enemy.svg, event=event, event_joined=time.time(), name=enemy.name,
-                                                 max_health=enemy.max_health, health=enemy.max_health,
-                                                 attack_range=enemy.attack_range, attack_damage=enemy.attack_damage,
-                                                 speed=enemy.speed, initiative=enemy.initiative, max_targets=1,
-                                                 level=1, position=position, left=left, top=top)
-
-                        eventlogs.append(
-                            EventLog(event=event,
-                                     htclass='text-warning log-entry',
-                                     log=f'Encountered lvl {e.level} {e.name}!')
-                        )
-
-                    EventLog.objects.bulk_create(eventlogs)
-
-        return event
-
-    @staticmethod
     def get_event_data(player: Player, full: bool = False) -> tuple[dict, bool]:
         event_data = {'log': [{'log': 'Exploring...', 'htclass': 'text-white log-entry'}], 'entities': None}
         event = player.event
@@ -224,7 +144,7 @@ class BaseView(View):
 
         # If player is not already in an event, try to put them in one
         if not player.event:
-            event = BaseView.get_or_create_event(location)
+            event = get_or_create_event(location)
 
             if event:
                 player.event = event
@@ -237,7 +157,7 @@ class BaseView(View):
         if location.type == 'D' and event:
             event_data = process_dungeon_event(player, event, full)
 
-        if location.type == 'T' and event:
+        elif location.type == 'T' and event:
             event_data = process_town_event(player, event, full)
 
         return event_data, joined

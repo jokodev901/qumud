@@ -3,10 +3,88 @@ import time
 import math
 
 from django.db import transaction
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Count, Q
 
 from world.models import Event, Player, Enemy, EventLog, PlayerLog, Location, Entity
 from core.utils import utils
+
+
+def get_or_create_event(location: Location) -> Event | None:
+    # We want to overflow players into the same events vs race-creating individual events
+    # select_for_update() on the location row as a transaction to ensure only one event created
+    # at a time
+
+    with transaction.atomic():
+        # Find existing events with less than player_limit number of players
+        prefetch_list = []
+
+        player_count = Count("entity", filter=Q(entity__type='P'))
+        event_prefetch = Prefetch('event_set',
+                                  queryset=Event.objects.all()
+                                  .annotate(player_count=player_count)
+                                  .filter(player_count__lt=location.max_players, ended=0))
+        prefetch_list.append(event_prefetch)
+
+        if location.type == 'D':
+            prefetch_list.append(Prefetch('enemytemplate_set'))
+
+        location_locked = (Location.objects.select_for_update()
+                           .prefetch_related(*prefetch_list)
+                           .get(id=location.id))
+
+        events = location_locked.event_set.all()
+
+        if events:
+            # Just picking first available here
+            # Consider ordering or some other rank
+            event = events[0]
+
+        else:
+            if location_locked.type == 'T':
+                event = Event.objects.create(location=location, last_update=time.time())
+
+            elif location_locked.type == 'D':
+                delta = time.time() - location_locked.last_event
+                ticks = math.floor(delta)
+
+                if ticks < location_locked.spawn_rate:
+                    return None
+
+                eventlogs = []
+                event = Event.objects.create(location=location, last_update=time.time())
+
+                e_temps = location.enemytemplate_set.all()
+                e_positions = []
+
+                # Just spawn one of each enemy type for now
+                for enemy in e_temps:
+                    position = 55 + enemy.initiative
+                    left = utils.clamp(((position / event.size) * 100), 5, 95)
+                    pos_round = 5 * round(left / 5)
+                    e_positions.append(pos_round)
+                    pos_count = e_positions.count(pos_round)
+                    flip = 1
+
+                    if pos_count % 2 == 0:
+                        flip = -1
+
+                    top = utils.clamp(50 + (math.floor(pos_count / 2) * 10 * flip), 5, 95)
+
+                    e = Enemy.objects.create(svg=enemy.svg, event=event, event_joined=time.time(), name=enemy.name,
+                                             max_health=enemy.max_health, health=enemy.max_health,
+                                             attack_range=enemy.attack_range, attack_damage=enemy.attack_damage,
+                                             speed=enemy.speed, initiative=enemy.initiative, max_targets=1,
+                                             level=1, position=position, left=left, top=top)
+
+                    eventlogs.append(
+                        EventLog(event=event,
+                                 htclass='text-warning log-entry',
+                                 log=f'Encountered lvl {e.level} {e.name}!')
+                    )
+
+                EventLog.objects.bulk_create(eventlogs)
+
+    return event
 
 
 def process_town_event(player: Player, event: Event, full: bool) -> dict | None:
