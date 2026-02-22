@@ -67,6 +67,23 @@ class BaseView(View):
         return player
 
     @staticmethod
+    def render_partials(request, partials, str_partials, headers, context):
+        """
+        Takes a list of template paths OR raw strings and returns a combined HttpResponse.
+        """
+        django_engine = engines['django']
+        html_parts = []
+
+        for partial in partials:
+            html_parts.append(render_to_string(partial, context, request=request))
+
+        for partial in str_partials:
+            template_obj = django_engine.from_string(partial)
+            html_parts.append(template_obj.render(context, request=request))
+
+        return HttpResponse("".join(html_parts), headers=headers)
+
+    @staticmethod
     def clean_text(text: str) -> str:
         cleaned = strip_tags(text)
         cleaned = cleaned.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
@@ -414,22 +431,6 @@ class SelectWorld(BaseView):
 class Map(BaseView):
     template_name = 'map.html'
 
-    def render_partials(self, request, partials, str_partials, headers, context):
-        """
-        Takes a list of template paths OR raw strings and returns a combined HttpResponse.
-        """
-        django_engine = engines['django']
-        html_parts = []
-
-        for partial in partials:
-            html_parts.append(render_to_string(partial, context, request=request))
-
-        for partial in str_partials:
-            template_obj = django_engine.from_string(partial)
-            html_parts.append(template_obj.render(context, request=request))
-
-        return HttpResponse("".join(html_parts), headers=headers)
-
     def get(self, request):
         player = self.prep_player(['location__region__world', 'event', 'owner'])
 
@@ -442,9 +443,9 @@ class Map(BaseView):
         try:
             # Render partials (update trigger)
             if request.GET.get('trigger', None) == 'update':
+                context = {'update': True}
                 partials = []
                 str_partials = []
-                living_svgs = []
                 headers = {}
                 recent_messages = self.get_region_messages(player=player)
                 region_players = self.get_region_players(region=player.location.region)
@@ -457,22 +458,25 @@ class Map(BaseView):
 
                 if recent_messages:
                     context['messages'] = recent_messages
-                    partials.append('partials/region_chat.html')
+                    partials.append('partials/region-chat.html')
 
                 if region_players:
                     context['region_players'] = region_players
-                    partials.append('partials/region_players.html')
+                    partials.append('partials/region-players.html')
 
                 if event_data:
                     context['event'] = event_data
+                    context['event_log_append'] = True
+                    partials.append('partials/event-log.html')
 
-                    # Full response
+                    # Joined event this update, render all SVGs
                     if event_joined:
-                        partials.append('partials/event.html')
+                        partials.append('partials/event-window.html')
 
-                    # Partial updates for logs, movement, death animations, rendering svgs for newly-joined entities
+                    # In existing event, update positions, remove entities no longer in event, render new svgs
                     else:
                         trigger_data = {}
+                        living_svgs = []
 
                         if event_data['entities']:
                             move_data = {'moveIds': [{'id': f'svg-{entity.public_id}', 'top': entity.top, 'left': entity.left}
@@ -495,20 +499,6 @@ class Map(BaseView):
 
                         trigger_data['triggerDefeatAnimation'] = living_svgs
                         headers['HX-Trigger'] = json.dumps(trigger_data)
-
-                        log_partial = """
-                            <div id="event-log-swap"
-                                 hx-swap-oob="afterbegin">
-                                {% for log in event.log %}
-                                <div class="log-wrapper">
-                                    <div class="log-content">
-                                        <div class="{{ log.htclass }}">{{ log.log }}</div>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        """
-                        str_partials.append(log_partial)
 
                 if player.new_location:
                     player.new_location = False
@@ -563,19 +553,18 @@ class Map(BaseView):
 
 
 class Travel(BaseView):
-    template = 'partials/travel.html'
+    partials = ['partials/travel.html', 'partials/event-log.html', 'partials/event-window.html']
 
     def post(self, request):
-        player = self.prep_player(['location__region',
-                                   'event',])
+        player = self.prep_player(['location__region', 'event',])
+
         if not player:
             return redirect('login')
 
-        context = {}
+        context = {'update': True, 'event_log_replace': True}
         update_fields = []
 
-        selected_location = (Location.objects.select_related('region')
-                             .get(public_id=request.POST['public_id']))
+        selected_location = Location.objects.select_related('region').get(public_id=request.POST['public_id'])
 
         if selected_location != player.location:
             if selected_location.region == player.location.region:
@@ -608,7 +597,7 @@ class Travel(BaseView):
                 player.owner.last_refresh = time.time()
                 player.owner.save(update_fields=['last_refresh'])
 
-                return render(request, self.template, context)
+                return self.render_partials(request, self.partials, [], {}, context)
 
             return HttpResponse('Invalid selection', status=400)
 
@@ -616,7 +605,7 @@ class Travel(BaseView):
 
 
 class RegionChat(BaseView):
-    template = 'partials/region_chat.html'
+    template = 'partials/region-chat.html'
 
     def post(self, request):
         player = self.prep_player(['location__region', 'owner'])

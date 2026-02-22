@@ -11,27 +11,13 @@
                     <span>Event</span>
                 </div>
                 <div id="event-card-body" class="card-body d-flex flex-column minheight0">
-                    <div id="event-card-swap" class="d-flex flex-column flex-grow-1 minheight0">
-                        <div id="event-window-swap" class="event-graphic position-relative flex-shrink-0" style="min-height: 200px;">
-                            {% for entity in event.entities %}
-                            {{ entity.render_svg|safe }}
-                            {% endfor %}
-                        </div>
 
-                        <div id="event-log-swap" class="scroll-window my-3 overflow-auto flex-grow-1 minheight0">
-                            <div class="log-wrapper">
-                                <div class="log-content">
-                                    {% for log in event.log %}
-                                    <div class="{{ log.htclass }}">{{ log.log }}</div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        </div>
+                    {% include 'partials/event-window.html' %}
+                    {% include 'partials/event-log.html' %}
 
-                        <div class="d-flex gap-2 justify-content-end mt-auto flex-shrink-0">
-                            <button class="btn btn-sm btn-dark-outline px-4">Flee</button>
-                            <button class="btn btn-sm btn-dark-outline px-4">Loot Item</button>
-                        </div>
+                    <div class="d-flex gap-2 justify-content-end mt-auto flex-shrink-0">
+                        <button class="btn btn-sm btn-dark-outline px-4">Flee</button>
+                        <button class="btn btn-sm btn-dark-outline px-4">Loot Item</button>
                     </div>
                 </div>
             </div>
@@ -61,21 +47,19 @@
                     <div class="row g-0 flex-grow-1 minheight0">
                         <div class="col-9 d-flex flex-column flex-grow-1 minheight0">
                             <div class="scroll-window overflow-auto flex-grow-1" style="height: 300px;">
-                                <div id="region-chat-swap">
-                                {% for message in messages %}
-                                    <div><span class="text-success">{{ message.user.alias }}:</span> {{ message.message }}</div>
-                                {% endfor %}
-                                </div>
+
+                                {% include 'partials/region-chat.html' %}
+
                             </div>
                         </div>
                         <div class="col-3 d-flex flex-column minheight0">
                             <div class="player-list d-flex flex-column flex-grow-1 minheight0">
-                                <div class="px-2 pt-2 pb-1 small border-bottom border-secondary mb-1">Online Players</div>
-                                <div id="player-list-swap" class="list-group list-group-flush flex-grow-1 overflow-auto minheight0">
-                                    {% for player in region_players %}
-                                        <div class="list-group-item">{{ player.alias }}</div>
-                                    {% endfor %}
+                                <div class="px-2 pt-2 pb-1 small border-bottom border-secondary mb-1">
+                                    Online Players
                                 </div>
+
+                                {% include 'partials/region-players.html' %}
+
                             </div>
                         </div>
                     </div>
@@ -162,37 +146,11 @@
         <div class="col-md-5 col-lg-4 order-3 order-md-4 d-flex">
             <div id="travel-card" class="card w-100 d-flex flex-column" hx-target="#travel-card-body">
                 <div class="card-header">Travel</div>
-                    <div id="travel-card-body" class="card-body d-flex flex-column flex-grow-1 minheight0">
-                        <div class="small fw-bold">World: <span class="fw-light">{{ travel.world }}</span></div>
-                        <div class="small fw-bold">Region: <span class="fw-light">{{ travel.region }} ({{ travel.region.get_biome_display }})</span></div>
-                        <div class="small fw-bold mb-4">Current Location: <span class="fw-light">{{ travel.current_location }}</span></div>
+                <div id="travel-card-body" class="card-body d-flex flex-column flex-grow-1 minheight0">
 
-                        <h6 class="small mb-2">Towns</h6>
-                        <div class="d-flex flex-wrap gap-2 mb-4">
-                        {% for town in travel.towns %}
-                            {% if travel.current_location != town %}
-                                <a class="btn btn-sm btn-dark-outline"
-                                   hx-post='{% url "travel" %}'
-                                   hx-vals='{"public_id": "{{ town.public_id }}"}'>
-                                   {{ town.name }}
-                                </a>
-                            {% endif %}
-                        {% endfor %}
-                        </div>
+                    {% include 'partials/travel.html' %}
 
-                        <h6 class="small mb-2">Dungeons</h6>
-                        <div class="d-flex flex-wrap gap-2">
-                        {% for dungeon in travel.dungeons %}
-                            {% if travel.current_location != dungeon %}
-                                <a class="btn btn-sm btn-dark-outline"
-                                   hx-post='{% url "travel" %}'
-                                   hx-vals='{"public_id": "{{ dungeon.public_id }}"}'>
-                                   {{ dungeon.name }} (lvl {{ dungeon.level }})
-                                </a>
-                            {% endif %}
-                        {% endfor %}
-                        </div>
-                    </div>
+                </div>
             </div>
         </div>
     </div>

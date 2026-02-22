@@ -1,0 +1,8 @@
+ <div id="event-window-swap"
+      class="event-graphic position-relative flex-shrink-0"
+      style="min-height: 200px;"
+      {% if update %} hx-swap-oob="true" {% endif %}>
+    {% for entity in event.entities %}
+    {{ entity.render_svg|safe }}
+    {% endfor %}
+ </div>

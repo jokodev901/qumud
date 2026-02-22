@@ -1,0 +1,6 @@
+<div id="player-list-swap" class="list-group list-group-flush flex-grow-1 overflow-auto minheight0"
+     {% if update %} hx-swap-oob="true" {% endif %}>
+    {% for player in region_players %}
+    <div class="list-group-item">{{ player.alias }}</div>
+    {% endfor %}
+</div>

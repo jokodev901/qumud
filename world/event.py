@@ -80,7 +80,7 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
                         continue
 
                     if entity.type == 'E':
-                        dmg = random.choice(range(5,10))
+                        dmg = random.choice(range(1,5))
                         entity.health -= dmg
 
                         newlogs.append(
@@ -125,7 +125,7 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
                     if pos_count % 2 == 0:
                         flip = -1
 
-                    entity.top = utils.clamp(50 + (math.floor(pos_count / 2) * 10 * flip), 5, 95)
+                    entity.top = utils.clamp(50 + (math.floor(pos_count / 2) * 15 * flip), 5, 95)
 
                 if enemy_count == 0:
                     # All enemies are dead, log it and stop processing ticks
