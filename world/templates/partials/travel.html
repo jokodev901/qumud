@@ -27,24 +27,3 @@
     {% endif %}
 {% endfor %}
 </div>
-
- <div id="event-window-swap"
-      style="min-height: 200px;"
-      hx-swap-oob="true"
-      class="event-graphic position-relative flex-shrink-0">
-    {% for entity in event.entities %}
-    {{ entity.render_svg|safe }}
-    {% endfor %}
- </div>
-
-<div id="event-log-swap"
-     hx-swap-oob="true"
-     class="scroll-window my-3 overflow-auto flex-grow-1 minheight0">
-    {% for log in event.log %}
-    <div class="log-wrapper">
-        <div class="log-content">
-            <div class="{{ log.htclass }}">{{ log.log }}</div>
-        </div>
-    </div>
-    {% endfor %}
-</div>

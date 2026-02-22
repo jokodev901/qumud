@@ -1,4 +1,4 @@
-<div id="region-chat-swap" hx-swap-oob="true">
+<div id="region-chat-swap" {% if update %} hx-swap-oob="true" {% endif %}>
 {% for message in messages %}
     <div><span class="text-success">{{ message.user.alias }}:</span> {{ message.message }}</div>
 {% endfor %}

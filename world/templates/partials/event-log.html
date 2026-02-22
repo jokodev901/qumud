@@ -1,0 +1,10 @@
+<div id="event-log-swap"
+    class="scroll-window my-3 overflow-auto flex-grow-1 minheight0"
+    {% if update %}
+        {% if event_log_append %} hx-swap-oob="afterbegin" {% endif %}
+        {% if event_log_replace %} hx-swap-oob="true" {% endif %}
+    {% endif %}>
+    {% for log in event.log %}
+    <div class="log-wrapper"><div class="log-content"><div class="{{ log.htclass }}">{{ log.log }}</div></div></div>
+    {% endfor %}
+</div>
