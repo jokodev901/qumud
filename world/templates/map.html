@@ -220,6 +220,7 @@ document.addEventListener('htmx:oobAfterSwap', (event) => {
         }
     }
 });
+
 document.body.addEventListener('triggerDefeatAnimation', (event) => {
     const activeIds = event.detail.activeIds || [];
     const allSvgs = document.querySelectorAll('[id^="svg-"]');
@@ -230,6 +231,18 @@ document.body.addEventListener('triggerDefeatAnimation', (event) => {
             element.addEventListener('animationend', () => {
                 element.remove();
             }, { once: true });
+        }
+    });
+});
+
+document.body.addEventListener('triggerMove', (event) => {
+    const updates = event.detail.moveIds || [];
+
+    updates.forEach(item => {
+        const element = document.getElementById(item.id);
+        if (element) {
+            element.style.top = `${item.top}%`;
+            element.style.left = `${item.left}%`;
         }
     });
 });

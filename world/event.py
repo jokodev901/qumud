@@ -13,7 +13,7 @@ def process_town_event(player: Player, event: Event, full: bool) -> dict | None:
     # Placeholder town event processing
     players = Player.objects.all().filter(event=event).exclude(pk=player.id)
 
-    return {'log': [], 'entities': players, 'dead_entities': []}
+    return {'log': [], 'entities': players}
 
 
 def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool = False) -> dict | None:
@@ -44,8 +44,8 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
 
         player_count = 0
         enemy_count = 0
-        dead_entities = []
         newlogs = []
+        killed_entities = []
 
         for entity in event_lock.entities:
             if not entity.dead:
@@ -53,9 +53,6 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
                     player_count += 1
                 elif entity.type == 'E':
                     enemy_count += 1
-
-            elif entity.dead >= player.owner.last_refresh:
-                dead_entities.append(entity)
 
         # Consider event paused while inactive (due to no players present)
         # Resume with fresh update time when a player joins again
@@ -69,10 +66,9 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
             Event.objects.filter(pk=event_lock.pk).update(ended=time.time(), active=False)
             Player.objects.filter(pk=player.pk).update(event=None, event_joined=0)
 
-            return {'log': event_logs, 'entities': [], 'dead_entities': dead_entities}
+            return {'log': event_logs, 'entities': []}
 
         # player_logs = {player.id: [] for player in event_lock.players}
-        killed_entities = []
 
         if ticks > 0:
             for tick in range(ticks):
@@ -160,4 +156,4 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
             Entity.objects.bulk_update(killed_entities + event_lock.entities,
                                        ['health', 'dead', 'position', 'left', 'top'])
 
-    return {'log': event_logs, 'entities': event_lock.entities, 'dead_entities': dead_entities + killed_entities}
+    return {'log': event_logs, 'entities': event_lock.entities}

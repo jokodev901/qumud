@@ -199,9 +199,8 @@ class BaseView(View):
         return event
 
     @staticmethod
-    def process_event_data(player: Player, full: bool = False) -> tuple[dict, bool]:
-        event_data = {'log': [{'log': 'Exploring...', 'htclass': 'text-white log-entry'}],
-                      'entities': None, 'dead_entities': None}
+    def get_event_data(player: Player, full: bool = False) -> tuple[dict, bool]:
+        event_data = {'log': [{'log': 'Exploring...', 'htclass': 'text-white log-entry'}], 'entities': None}
         event = player.event
         location = player.location
         joined = False
@@ -449,7 +448,7 @@ class Map(BaseView):
                 headers = {}
                 recent_messages = self.get_region_messages(player=player)
                 region_players = self.get_region_players(region=player.location.region)
-                event_data, event_joined = self.process_event_data(player=player)
+                event_data, event_joined = self.get_event_data(player=player)
 
                 if player.new_status:
                     context['character'] = player
@@ -471,23 +470,14 @@ class Map(BaseView):
                     if event_joined:
                         partials.append('partials/event.html')
 
-                    # Logs, movement, and death updates only (no re-rendering svgs)
+                    # Partial updates for logs, movement, death animations, rendering svgs for newly-joined entities
                     else:
+                        trigger_data = {}
+
                         if event_data['entities']:
-                            move_commands = [(f"document.getElementById('svg-{entity.public_id}')"
-                                              f".setAttribute('style', 'top: {entity.top}%;"
-                                              f" left: {entity.left}%; transform: translate(-50%, -50%);"
-                                              f" width: 3rem; height: 3rem; z-index: 1;');")
-                                             for entity in event_data['entities']]
-
-                            command_partial = f'''
-                            <div id="htmx-receiver" hx-swap-oob="true" 
-                                 hx-on::after-settle="{' '.join(move_commands)}">
-                            </div>
-                            '''
-
-                            str_partials.append(command_partial)
-
+                            move_data = {'moveIds': [{'id': f'svg-{entity.public_id}', 'top': entity.top, 'left': entity.left}
+                                                    for entity in event_data['entities']]}
+                            trigger_data['triggerMove'] = move_data
                             new_svgs = [entity.render_svg for entity in event_data['entities']
                                         if entity.event_joined >= player.owner.last_refresh]
 
@@ -500,13 +490,11 @@ class Map(BaseView):
                                 """
                                 str_partials.append(svg_partial)
 
-                            living_svgs = [f"svg-{entity.public_id}" for entity in event_data['entities']]
+                            living_svgs = {'activeIds':
+                                               [f"svg-{entity.public_id}" for entity in event_data['entities']]}
 
-                        headers['HX-Trigger'] = json.dumps({
-                            "triggerDefeatAnimation": {
-                                "activeIds": living_svgs
-                            }
-                        })
+                        trigger_data['triggerDefeatAnimation'] = living_svgs
+                        headers['HX-Trigger'] = json.dumps(trigger_data)
 
                         log_partial = """
                             <div id="event-log-swap"
@@ -520,7 +508,6 @@ class Map(BaseView):
                                 {% endfor %}
                             </div>
                         """
-
                         str_partials.append(log_partial)
 
                 if player.new_location:
@@ -548,7 +535,7 @@ class Map(BaseView):
                 recent_messages = self.get_region_messages(player=player, full=True)
                 region_players = self.get_region_players(region=player.location.region)
                 context['travel'] = self.get_travel_data(player=player)
-                context['event'], _ = self.process_event_data(player=player, full=True)
+                context['event'], _ = self.get_event_data(player=player, full=True)
                 context['region_players'] = region_players
                 context['messages'] = recent_messages
                 context['character'] = player
@@ -615,7 +602,7 @@ class Travel(BaseView):
                 player = Player.objects.select_related('location__region__world', 'event', 'owner').get(pk=player.id)
 
                 # Update and get event data
-                context['event'], _ = self.process_event_data(player=player, full=True)
+                context['event'], _ = self.get_event_data(player=player, full=True)
                 context['travel'] = self.get_travel_data(player=player)
 
                 player.owner.last_refresh = time.time()
