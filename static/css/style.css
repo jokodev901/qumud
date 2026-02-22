@@ -152,7 +152,7 @@
 
 .sprite {
     /* Smoothly animate changes to top, left, and transform over 0.4 seconds */
-    transition: top 0.4s ease-in-out, left 0.4s ease-in-out, opacity 0.5s ease;
+    transition: top 0.4s 0.1s ease-in-out, left 0.4s 0.1s ease-in-out, opacity 0.5s ease;
     animation: entranceFade 0.7s ease-out forwards;
     opacity: 0;
 }
@@ -176,7 +176,7 @@
 .log-wrapper {
     display: grid;
     grid-template-rows: 0fr; /* Collapsed by default */
-    animation: slideDownAndFade 0.21s ease-out forwards;
+    animation: slideDownAndFade 0.0s ease-out forwards;
 }
 
 .log-content {
@@ -197,7 +197,7 @@
 .log-wrapper:nth-child(12) { animation-delay: 0.1s; }
 .log-wrapper:nth-child(13) { animation-delay: 0.08s; }
 .log-wrapper:nth-child(14) { animation-delay: 0.04s; }
-.log-wrapper:nth-child(15) { animation-delay: 0.0s; }
+.log-wrapper:nth-child(15) { animation-delay: 0.02s; }
 
 .log-pruning {
     /* !important ensures we override the 'forwards' state of the entrance animation */
