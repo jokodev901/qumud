@@ -19,17 +19,6 @@
         </button>
             <div class="navbar-collapse collapse" id="navbar" hx-boost="true" hx-target="#main-content">
                 <ul class="nav navbar-nav me-auto">
-                    <li class="nav-item"><div>Seconds: <span id="session-timer">0</span></div></li>
-                    <script>
-                        (function() {
-                            let seconds = 0;
-                            const timerElement = document.getElementById('session-timer');
-                            const timerInterval = setInterval(() => {
-                                seconds++;
-                                timerElement.innerText = seconds;
-                            }, 1000);
-                        })();
-                    </script>
                     {% if user.is_authenticated %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'profile' %}">Profile</a>
@@ -63,7 +52,6 @@
     <main id="main-content" role="main" class="container py-3">
         {% block content %}{% endblock %}
     </main>
-<div id="htmx-receiver" style="display:none;"></div>
 </body>
 </html>
 

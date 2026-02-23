@@ -71,74 +71,59 @@
             <div id="status-card" class="card w-100 d-flex flex-column" hx-target="#status-card-body">
                 <div class="card-header">Status</div>
                 <div id="status-card-body" class="card-body d-flex flex-column flex-grow-1 minheight0">
-                    <div id="status-card-swap" class="d-flex flex-column flex-grow-1 minheight0">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="fw-bold">{{ character.name }}</span>
-                            <span class="badge bg-secondary">Lvl {{  character.level }}</span>
-                        </div>
-                        <div class="progress mb-2 position-relative bg-black border border-white" style="min-height: 20px;">
-                            <div class="progress-bar bg-danger"
-                                 role="progressbar"
-                                 style="width: {{ character_health_perc }}%;"
-                                 aria-valuenow="{{ character.health }}"
-                                 aria-valuemin="0"
-                                 aria-valuemax="{{ character.max_health }}"></div>
-                            <span class="justify-content-center d-flex position-absolute w-100 text-white text-shadow">
-                                {{ character.health }} / {{ character.max_health }} HP</span>
-                        </div>
-                        <div class="progress mb-2 position-relative bg-black border border-white" style="min-height: 20px;">
-                            <div class="progress-bar bg-info"
-                                 role="progressbar"
-                                 style="width: 100%;"
-                                 aria-valuenow="100"
-                                 aria-valuemin="0"
-                                 aria-valuemax="100"></div>
-                            <span class="justify-content-center d-flex position-absolute w-100 text-white text-shadow">
-                                100 / 100 MP</span>
-                        </div>
-                        <div class="scroll-window scroll-status overflow-auto d-flex flex-column flex-grow-1" style="height: 100px;">
-                            <div class="row g-0">
-                                <div>
-                                    <div>Looted sword</div>
-                                    <div>Won battle</div>
-                                    <div>player leveled up! level 2</div>
-                                    <div>Looted sword</div>
-                                    <div>Won battle</div>
-                                    <div>player leveled up! level 2</div>
-                                    <div>Looted sword</div>
-                                    <div>Won battle</div>
-                                    <div>player leveled up! level 2</div>
-                                    <div>Looted sword</div>
-                                    <div>Won battle</div>
-                                    <div>player leveled up! level 2</div>
-                                    <div>Looted sword</div>
-                                    <div>Won battle</div>
-                                    <div>player leveled up! level 2</div>
-                                    <div>Looted sword</div>
-                                    <div>Won battle</div>
-                                    <div>player leveled up! level 2</div>
-                                    <div>Looted sword</div>
-                                    <div>Won battle</div>
-                                    <div>player leveled up! level 2</div>
-                                    <div>Looted sword</div>
-                                    <div>Won battle</div>
-                                    <div>player leveled up! level 2</div>
-                                    <div>Looted sword</div>
-                                    <div>Won battle</div>
-                                    <div>player leveled up! level 2</div>
-                                    <div>Looted sword</div>
-                                    <div>Won battle</div>
-                                    <div>player leveled up! level 2</div>
-                                    <div>Looted sword</div>
-                                    <div>Won battle</div>
-                                    <div>player leveled up! level 2</div>
-                                    <div>Looted sword</div>
-                                    <div>Won battle</div>
-                                    <div>player leveled up! level 2</div>
-                                </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-bold">{{ character.name }}</span>
+                        <span id="status-level" class="badge bg-secondary" >Lvl {{  character.level }}</span>
+                    </div>
+
+                    <div class="progress mb-2 position-relative bg-black border border-white" style="height: 20px;">
+                        <div id="status-hp-bar" class="progress-bar bg-danger"
+                             role="progressbar"
+                             style="width: {{ character_health_perc }}%;"
+                             aria-valuenow="{{ character.health }}"
+                             aria-valuemin="0"
+                             aria-valuemax="{{ character.max_health }}"></div>
+                        <span id="status-hp-text" class="justify-content-center d-flex position-absolute w-100 text-white text-shadow">
+                            {{ character.health }} / {{ character.max_health }} HP</span>
+                    </div>
+
+                    <div class="progress mb-2 position-relative bg-black border border-white" style="height: 20px;">
+                        <div class="progress-bar bg-info"
+                             role="progressbar"
+                             style="width: 100%;"
+                             aria-valuenow="100"
+                             aria-valuemin="0"
+                             aria-valuemax="100"></div>
+                        <span class="justify-content-center d-flex position-absolute w-100 text-white text-shadow">
+                            100 / 100 MP</span>
+                    </div>
+
+                    <div class="scroll-window" style="border-radius: 0 0 0 4px;">
+                        <div class="row g-0">
+                            <div>
+                                <div>Looted sword</div>
+                                <div>Won battle</div>
+                                <div>player leveled up! level 2</div>
+                                <div>Looted sword</div>
+                                <div>Won battle</div>
+                                <div>player leveled up! level 2</div>
+                                <div>Looted sword</div>
+                                <div>Won battle</div>
+                                <div>player leveled up! level 2</div>
+                                <div>Looted sword</div>
+                                <div>Won battle</div>
+                                <div>player leveled up! level 2</div>
+                                <div>Looted sword</div>
+                                <div>Won battle</div>
+                                <div>player leveled up! level 2</div>
+                                <div>Looted sword</div>
+                                <div>Won battle</div>
+                                <div>player leveled up! level 2</div>
                             </div>
                         </div>
                     </div>
+
                 </div>
             </div>
         </div>
@@ -204,5 +189,18 @@ document.body.addEventListener('triggerMove', (event) => {
         }
     });
 });
+
+document.body.addEventListener('updateStatus', (event) => {
+    const e_hpbar = document.getElementById('status-hp-bar');
+    const e_hptxt = document.getElementById('status-hp-text');
+    const e_lvl = document.getElementById('status-level');
+
+    e_hpbar.style.width = `${event.detail.hp_perc}%`;
+    e_hpbar.setAttribute('aria-valuenow', event.detail.hp_curr);
+    e_hpbar.setAttribute('aria-valuemax', event.detail.hp_max);
+    e_hptxt.innerText = `${event.detail.hp_curr} / ${event.detail.hp_max} HP`;
+    e_lvl.innerText = `Lvl ${event.detail.lvl}`;
+});
+
 </script>
 {% endblock %}

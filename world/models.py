@@ -150,7 +150,7 @@ class Entity(BaseModel):
 
     @property
     def health_perc(self):
-        return math.floor((self.max_health / self.health) * 100)
+        return math.floor((self.health / self.max_health) * 100)
 
     @property
     def render_svg(self):

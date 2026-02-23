@@ -122,8 +122,6 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
 
         player_count = 0
         enemy_count = 0
-        newlogs = []
-        killed_entities = []
 
         for entity in event_lock.entities:
             if not entity.dead:
@@ -149,6 +147,9 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
         # player_logs = {player.id: [] for player in event_lock.players}
 
         if ticks > 0:
+            newlogs = []
+            killed_entities = []
+
             for tick in range(ticks):
                 e_positions = []
                 p_positions = []
@@ -167,6 +168,15 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
                                      log=f'{entity.name} took {dmg} damage')
                         )
 
+                    elif entity.type == 'P':
+                        entity.health -= 1
+
+                        newlogs.append(
+                            EventLog(event=event_lock,
+                                     htclass='text-danger log-entry',
+                                     log=f'{entity.name} took 1 damage')
+                        )
+
                     if entity.health < 1:
                         newlogs.append(
                             EventLog(event=event_lock,
@@ -182,6 +192,11 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
                         entity.dead = time.time()
                         killed_entities.append(entity)
                         event_lock.entities.remove(entity)
+
+                        # TODO handle player deaths
+                        # do we need to do anything different for the activating player vs any other?
+                        # we also need to update health bars
+                        # if entity.pk == player.pk:
 
                         continue
 
