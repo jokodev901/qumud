@@ -119,11 +119,6 @@ class Entity(BaseModel):
         ('E', 'Enemy'),
     )
 
-    # Field types for conditional triggers
-    EVENT_FIELDS = {'health', 'level', 'position', 'event',}
-    STATUS_FIELDS = {'max_health', 'health', 'level',}
-    LOCATION_FIELDS = {'location',}
-
     public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     name = models.CharField('Name', max_length=32)
     type = models.CharField('Entity type', max_length=1, choices=ENTITY_TYPES)
@@ -154,12 +149,7 @@ class Entity(BaseModel):
 
     @property
     def render_svg(self):
-        dead = ''
-
-        if self.dead:
-            dead = 'defeat-animate'
-
-        return self.svg.format(public_id=self.public_id, top=self.top, left=self.left, dead=dead)
+        return self.svg.format(public_id=self.public_id, top=self.top, left=self.left)
 
     def __str__(self):
         return self.name
@@ -170,14 +160,10 @@ class Entity(BaseModel):
 
 
 class Player(Entity):
-    # State flags
-    new_status = models.BooleanField(default=False) # Does the status pane need to be updated?
-    new_location = models.BooleanField(default=False) # Do we need to do new location operations?
-
-    # Relationships
     location = models.ForeignKey(Location, null=True, blank=True, on_delete=models.SET_NULL)
     owner = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='user_characters')
     active = models.OneToOneField(User, null=True, blank=True, on_delete=models.CASCADE)
+    last_travel = models.FloatField(default=0)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -190,7 +176,7 @@ class Player(Entity):
             self.type = 'P'
             self.svg = """
             <svg id="svg-{public_id}"
-             class="position-absolute sprite {dead}"
+             class="position-absolute sprite"
              style="top: {top}%; left: {left}%; transform: translate(-50%, -50%); width: 3rem; height: 3rem; z-index: 1;"
             viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
               <rect x="35" y="45" width="30" height="30" fill="white" stroke="black" stroke-width="2" rx="2" />            
@@ -202,26 +188,6 @@ class Player(Entity):
               <rect x="52" y="75" width="10" height="15" fill="white" stroke="black" stroke-width="2" />
             </svg>
             """
-
-        else:
-            update_fields = kwargs.get('update_fields')
-            # push an updates to fields or related models when relevant field changes are made
-
-            if update_fields is not None:
-                update_set = set(update_fields)
-
-                status_update = not update_set.isdisjoint(self.STATUS_FIELDS)
-                location_update = not update_set.isdisjoint(self.LOCATION_FIELDS)
-
-                if location_update:
-                    self.new_location = True
-                    update_set.add('new_location')
-
-                if status_update:
-                    self.new_status = True
-                    update_set.add('new_status')
-
-                kwargs['update_fields'] = update_set
 
         super().save(*args, **kwargs)
 

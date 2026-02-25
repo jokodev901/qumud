@@ -105,11 +105,13 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
     with transaction.atomic():
         entity_prefetch = Prefetch('entity_set',
                                    Entity.objects.all()
+                                   .filter(dead=None)
                                    .order_by('-initiative'), to_attr='entities')
 
         try:
             event_lock = (Event.objects.select_for_update()
                           .prefetch_related(entity_prefetch)
+                          .select_related('location__region')
                           .get(pk=event.id))
 
         except Event.DoesNotExist:
@@ -117,18 +119,17 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
 
         # fetch backlog regardless of update timing
         event_logs = (EventLog.objects.all()
-                      .filter(created_at__gte=player.owner.last_refresh, event=event)
+                      .filter(created_at__gte=player.owner.last_refresh, event=event_lock)
                       .order_by('-created_at'))
 
         player_count = 0
         enemy_count = 0
 
         for entity in event_lock.entities:
-            if not entity.dead:
-                if entity.type == 'P':
-                    player_count += 1
-                elif entity.type == 'E':
-                    enemy_count += 1
+            if entity.type == 'P':
+                player_count += 1
+            elif entity.type == 'E':
+                enemy_count += 1
 
         # Consider event paused while inactive (due to no players present)
         # Resume with fresh update time when a player joins again
@@ -155,9 +156,6 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
                 p_positions = []
 
                 for entity in event_lock.entities[:]:
-                    if entity.dead:
-                        continue
-
                     if entity.type == 'E':
                         dmg = random.choice(range(1,5))
                         entity.health -= dmg
@@ -186,17 +184,22 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
 
                         if entity.type == 'P':
                             player_count -= 1
+
+                            # Send player to town and heal them
+                            # this is where death penalties would be processed
+                            entity.health = entity.max_health
+                            town = Location.objects.filter(region=event_lock.location.region, type='T').first()
+                            Player.objects.filter(id=entity.id).update(last_travel=time.time(),
+                                                                       location=town,
+                                                                       health=entity.max_health,
+                                                                       event=None)
+
                         elif entity.type == 'E':
                             enemy_count -= 1
+                            entity.dead = time.time()
 
-                        entity.dead = time.time()
                         killed_entities.append(entity)
                         event_lock.entities.remove(entity)
-
-                        # TODO handle player deaths
-                        # do we need to do anything different for the activating player vs any other?
-                        # we also need to update health bars
-                        # if entity.pk == player.pk:
 
                         continue
 

@@ -116,7 +116,7 @@ class EntityAdmin(admin.ModelAdmin):
 @admin.register(Player)
 class PlayerAdmin(admin.ModelAdmin):
     list_display = ('name', 'owner', 'level', 'location', 'event')
-    list_filter = ('level', 'new_location',)
+    list_filter = ('level',)
     raw_id_fields = ('owner', 'active', 'location', 'event', 'target')
     readonly_fields = ('public_id',)
     search_fields = ('name', 'public_id', 'owner__username')
@@ -124,7 +124,6 @@ class PlayerAdmin(admin.ModelAdmin):
     fieldsets = (
         ('Identity', {'fields': ('public_id', 'name', 'owner', 'active')}),
         ('State', {'fields': ('location', 'event', 'target', 'position', 'svg')}),
-        ('Flags', {'fields': ('new_status', 'new_location',)}),
         ('Stats', {'fields': (('level', 'health', 'max_health'), ('attack_damage', 'attack_range', 'speed'))}),
     )
 

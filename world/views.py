@@ -117,7 +117,7 @@ class BaseView(View):
         return players
 
     @staticmethod
-    def get_travel_data(player: Player) -> dict:
+    def get_travel_data(player: Player):
         context = {}
         current_location = player.location
         region = current_location.region
@@ -358,7 +358,6 @@ class Map(BaseView):
             return redirect('login')
 
         context = {}
-        player_updates = []
 
         try:
             # Render partials (update trigger)
@@ -424,13 +423,16 @@ class Map(BaseView):
 
                         trigger_data['triggerDefeatAnimation'] = living_svgs
 
-                if player.new_location:
-                    player.new_location = False
-                    player_updates.append('new_location')
+                # Requery player to get updated location and last_travel
+                player = Player.objects.select_related('location__region__world', 'owner').get(id=player.id)
 
-                if player_updates:
-                    with transaction.atomic():
-                        player.save(update_fields=player_updates)
+                if player.last_travel >= player.owner.last_refresh:
+                    context['travel'] = self.get_travel_data(player=player)
+                    partials.append('partials/travel.html')
+                    # Overwrite event data since we are moving to a new location
+                    context['event'] = {'log': [{'log': 'Respawned in town', 'htclass': 'text-white log-entry'}], 'entities': None}
+                    context['event_log_append'] = False
+                    context['event_log_replace'] = True
 
                 player.owner.last_refresh = time.time()
                 player.owner.save(update_fields=['last_refresh'])
@@ -452,18 +454,6 @@ class Map(BaseView):
                 context['messages'] = recent_messages
                 context['character'] = player
                 context['character_health_perc'] = player.health_perc
-
-                if player.new_location:
-                    player.new_location = False
-                    player_updates.append('new_location')
-
-                if player.new_status:
-                    player.new_status = False
-                    player_updates.append('new_status')
-
-                if player_updates:
-                    with transaction.atomic():
-                        player.save(update_fields=player_updates)
 
                 player.owner.last_refresh = time.time()
                 player.owner.save(update_fields=['last_refresh'])
@@ -500,7 +490,7 @@ class Travel(BaseView):
                             player.event.save(update_fields=["active", ])
 
                         player.event = None
-                        player.event_joined = 0
+                        player.event_joined = time.time()
                         update_fields.append('event')
                         update_fields.append('event_joined')
 
