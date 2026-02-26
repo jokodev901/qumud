@@ -3,7 +3,7 @@ from datetime import datetime
 from .models import (
     World, Region, Location,
     Event, EnemyTemplate, Entity, Player, Enemy,
-    RegionChatMessage, EventLog
+    RegionChatMessage, EventLog, PlayerLog
 )
 
 
@@ -43,6 +43,15 @@ class EventLogInline(admin.TabularInline):
     fields = ('created_at', 'log')
     readonly_fields = ('created_at',)
     verbose_name = "Event logs"
+    show_change_link = True
+
+
+class PlayerLogInline(admin.TabularInline):
+    model = PlayerLog
+    extra = 0
+    fields = ('created_at', 'log')
+    readonly_fields = ('created_at',)
+    verbose_name = "Player logs"
     show_change_link = True
 
 
@@ -121,6 +130,8 @@ class PlayerAdmin(admin.ModelAdmin):
     readonly_fields = ('public_id',)
     search_fields = ('name', 'public_id', 'owner__username')
 
+    inlines = [PlayerLogInline]
+
     fieldsets = (
         ('Identity', {'fields': ('public_id', 'name', 'owner', 'active')}),
         ('State', {'fields': ('location', 'event', 'target', 'position', 'svg')}),
@@ -146,6 +157,18 @@ class RegionChatMessageAdmin(admin.ModelAdmin):
 
     def message_preview(self, obj):
         return obj.message[:50]
+
+    def created_at_fmt(self, obj):
+        return datetime.fromtimestamp(obj.created_at).strftime('%Y-%m-%d %H:%M:%S')
+
+
+@admin.register(PlayerLog)
+class PlayerLogAdmin(admin.ModelAdmin):
+    list_display = ('player', 'log', 'created_at')
+    list_filter = ('player', 'log', 'created_at')
+    raw_id_fields = ('player',)
+    readonly_fields = ('created_at',)
+    ordering = ('-created_at',)
 
     def created_at_fmt(self, obj):
         return datetime.fromtimestamp(obj.created_at).strftime('%Y-%m-%d %H:%M:%S')
