@@ -1,17 +1,17 @@
 # QuMUD
 
 [![Status](https://img.shields.io/badge/status-work--in--progress-orange)](#)
-[![Stack](https://img.shields.io/badge/stack-Django%20%7C%20HTMX%20%7C%20Bootstrap-green)](#)
+[![Stack](https://img.shields.io/badge/stack-Django%20%7C%20HTMX%20%7C%20PostgreSQL-green)](#)
 
-QuMUD (Quantum MUD) is a minimalist text-based procedurally generated multiplayer RPG with automated combat and a focus on exploration, loot, and character building.
+QuMUD (Quantum MUD) is a procedurally generated multiplayer RPG with idle/autobattle combat and a focus on exploration, loot, and character building.
 
-Combat events are based on realtime server ticks, but are not simulated until requested (or "observed" hence the Quantum name).  Eventually the entire game will be playable via API as an alternative to the stock web app. 
+Combat events happen in real time, but are not simulated until requested (or "observed" hence the Quantum name).  Eventually the entire game will be playable via API as an alternative to the stock web app. 
 
 ---
 
 ## Overview
 
-QuMUD is currently under active development, with the current focus on standing up a stripped down web app to demonstrate and test the core systems.
+QuMUD is under active development, currently aiming to stand up a simple playable demo.
 
 ### Current Features
 - Basic user auth
@@ -19,28 +19,34 @@ QuMUD is currently under active development, with the current focus on standing 
 - Can create or join existing Worlds by name
 - Worlds generate procgen starting region, town, dungeons, enemy templates
 - Can see other active players in region and chat with them
+- Combat event instance creation, matching with other players, and simulation of entity movement and damage
 
 ---
 
 ### In Progress Features
-- **Character Creation:** A temporary character creation template is in place, will be replaced with a more robust class/stat-based system.
-- **Event and Enemy Management:** procgen enemy templates being created, working on combat event management
+- **Character Creation:** Implementing starting class templates
+- **Character Progression:** XP and leveling
+- **Event and Enemy Management:** Combat events with multiplayer support are currently simulated with movement and damage updates, will implement actual combat logic next
 
 ---
 
 ### What's next?
-- **Combat events:** Combat logic between player and enemies and manage event state
-- **Stat system:** Character creation with stat weights and xp/levelling system
-- **Loot:**  Initial item system with placeholder equipment 
+- **True Combat:** Autobattle combat between players and enemies with realtime updates
+- **Stat system:** Character creation with stat weights, xp and leveling
+- **Loot:** Random loot drops, item and equipment management
+- **Expanded world:** Connected regions scaling by level
+- **REST API:** Game fully playable via API calls, allowing playability via third party frontends or CLI 
 
 ---
 
-## 🛠️ The Stack
+## 🛠️ Project Stack
 
-This project is being built using Django, HTMX, and Bootstrap, focusing on server-side state and low-latency interactions.
+This project is being built using Django, HTMX, minimal JavaScript, and Bootstrap 5.
+
+QuMUD is intentionally simplistic and seeks to do as much as possible with simple HTTP requests and, eventually, optional REST API. 
 
 - **Backend:** [Django 6.0](https://www.djangoproject.com/)
 - **API:** [Django REST Framework](https://www.django-rest-framework.org)
-- **Frontend:** [HTMX](https://htmx.org/), Django Templates
+- **Frontend:** [HTMX](https://htmx.org/), Django Templates, Javascript
 - **CSS:** [Bootstrap 5](https://getbootstrap.com/)
 - **Database:** [PostgreSQL](https://www.postgresql.org)
