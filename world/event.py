@@ -121,6 +121,7 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
         event_logs = (EventLog.objects.all()
                       .filter(created_at__gte=player.owner.last_refresh, event=event_lock)
                       .order_by('-created_at'))
+        player_logs = []
 
         player_count = 0
         enemy_count = 0
@@ -144,8 +145,6 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
             Player.objects.filter(pk=player.pk).update(event=None, event_joined=0)
 
             return {'log': event_logs, 'entities': []}
-
-        # player_logs = {player.id: [] for player in event_lock.players}
 
         if ticks > 0:
             newlogs = []
@@ -183,6 +182,12 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
                         )
 
                         if entity.type == 'P':
+                            player_logs.append(
+                                PlayerLog(player=player,
+                                          htclass='text-danger',
+                                          log=f'YOU DIED')
+                            )
+
                             player_count -= 1
 
                             # Send player to town and heal them
@@ -230,6 +235,12 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
                                  htclass='text-success log-entry',
                                  log=f'All enemies defeated!')
                     )
+                    player_logs.append(
+                        PlayerLog(player=player,
+                                  htclass='text-success',
+                                  log=f'Won battle at {event_lock.location}!')
+                    )
+
                     break
 
                 elif player_count == 0:
@@ -242,6 +253,10 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
                 event_logs = (EventLog.objects.all()
                               .filter(created_at__gte=player.owner.last_refresh, event=event)
                               .order_by('-created_at'))
+
+            # Process player logs
+            if player_logs:
+                PlayerLog.objects.bulk_create(player_logs)
 
             event_lock.last_update = time.time() - offset
 

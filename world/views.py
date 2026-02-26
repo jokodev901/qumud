@@ -1,7 +1,6 @@
 import json
 import time
 import re
-import math
 
 from django.views.generic import TemplateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -15,10 +14,9 @@ from django.template.loader import render_to_string
 
 from rest_framework.authtoken.models import Token
 
-from core.utils import generators, utils
+from core.utils import generators
 from authentication.models import User
-from .models import (World, Region, Location, RegionChatMessage, Player, Enemy, EnemyTemplate,
-                     Event, EventLog)
+from .models import (World, Region, Location, RegionChatMessage, Player, EnemyTemplate, PlayerLog)
 from .forms import CharacterCreationForm, WorldCreationForm
 from .event import process_dungeon_event, process_town_event, get_or_create_event
 
@@ -92,11 +90,6 @@ class BaseView(View):
 
     @staticmethod
     def get_region_messages(player: Player, count: int = 50, full: bool = False):
-        """
-        we have to select either way, so lets get our ordered candidate messages, but only return them
-        if the latest one has a sent_at >= user.last_refresh
-        """
-
         messages = (RegionChatMessage.objects.all()
                     .select_related('user')
                     .filter(region=player.location.region, created_at__gte=time.time()-600)
@@ -115,6 +108,15 @@ class BaseView(View):
                    .order_by('alias'))
 
         return players
+
+    @staticmethod
+    def get_player_logs(player: Player, count: int = 50, full: bool = False):
+        logs = PlayerLog.objects.filter(player_id=player.id).order_by('-created_at')
+
+        if not full:
+            logs = logs.filter(created_at__gte=player.owner.last_refresh)
+
+        return {'logs': logs[:count]}
 
     @staticmethod
     def get_travel_data(player: Player):
@@ -368,6 +370,7 @@ class Map(BaseView):
                 headers = {}
                 trigger_data = {}
                 recent_messages = self.get_region_messages(player=player)
+                recent_player_logs = self.get_player_logs(player=player)
                 region_players = self.get_region_players(region=player.location.region)
                 event_data, event_joined = self.get_event_data(player=player)
 
@@ -379,6 +382,11 @@ class Map(BaseView):
                                                 'hp_max': player.max_health,
                                                 'lvl': player.level}
 
+                if recent_player_logs['logs']:
+                    context['status'] = recent_player_logs
+                    context['player_log_swap'] = 'append'
+                    partials.append('partials/player-log.html')
+
                 if recent_messages:
                     context['messages'] = recent_messages
                     partials.append('partials/region-chat.html')
@@ -389,7 +397,7 @@ class Map(BaseView):
 
                 if event_data:
                     context['event'] = event_data
-                    context['event_log_append'] = True
+                    context['event_log_swap'] = 'append'
                     partials.append('partials/event-log.html')
 
                     # Joined event this update, render all SVGs
@@ -430,9 +438,9 @@ class Map(BaseView):
                     context['travel'] = self.get_travel_data(player=player)
                     partials.append('partials/travel.html')
                     # Overwrite event data since we are moving to a new location
-                    context['event'] = {'log': [{'log': 'Respawned in town', 'htclass': 'text-white log-entry'}], 'entities': None}
-                    context['event_log_append'] = False
-                    context['event_log_replace'] = True
+                    context['event'] = {'log': [{'log': 'Respawned in town', 'htclass': 'text-white log-entry'}],
+                                        'entities': None}
+                    context['event_log_swap'] = 'replace'
 
                 player.owner.last_refresh = time.time()
                 player.owner.save(update_fields=['last_refresh'])
@@ -448,8 +456,11 @@ class Map(BaseView):
             else:
                 recent_messages = self.get_region_messages(player=player, full=True)
                 region_players = self.get_region_players(region=player.location.region)
+                context['status'] = self.get_player_logs(player=player, full=True)
+                context['player_log_swap'] = 'replace'
                 context['travel'] = self.get_travel_data(player=player)
                 context['event'], _ = self.get_event_data(player=player, full=True)
+                context['event_log_swap'] = 'replace'
                 context['region_players'] = region_players
                 context['messages'] = recent_messages
                 context['character'] = player
@@ -473,7 +484,7 @@ class Travel(BaseView):
         if not player:
             return redirect('login')
 
-        context = {'update': True, 'event_log_replace': True}
+        context = {'update': True, 'event_log_swap': 'replace'}
         update_fields = []
 
         selected_location = Location.objects.select_related('region').get(public_id=request.POST['public_id'])
