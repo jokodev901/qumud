@@ -1,21 +1,18 @@
 from django import forms
-from .models import Player, World
+from .models import Player, World, PlayerClass
 
 
-class CharacterCreationForm(forms.ModelForm):
-    class Meta:
-        model = Player
+class CharacterCreateForm(forms.Form):
+    character_name = forms.CharField(max_length=32, min_length=2)
+    character_class = forms.ModelChoiceField(queryset=PlayerClass.objects.all())
 
-        fields = ['name', 'max_health', 'attack_range', 'attack_damage', 'speed', 'initiative', 'max_targets']
-        widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter character name...'}),
-            'max_health': forms.NumberInput(attrs={'class': 'form-control'}),
-            'attack_range': forms.NumberInput(attrs={'class': 'form-control'}),
-            'attack_damage': forms.NumberInput(attrs={'class': 'form-control'}),
-            'speed': forms.NumberInput(attrs={'class': 'form-control'}),
-            'initiative': forms.NumberInput(attrs={'class': 'form-control'}),
-            'max_targets': forms.NumberInput(attrs={'class': 'form-control'}),
-        }
+    def clean_character_name(self):
+        name = self.cleaned_data['character_name']
+
+        if Player.objects.filter(name__iexact=name).exists():
+            raise forms.ValidationError("This name is already taken.")
+
+        return name
 
 
 class WorldCreationForm(forms.ModelForm):
