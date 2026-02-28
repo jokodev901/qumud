@@ -96,23 +96,6 @@ class EventLog(BaseModel):
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
 
 
-class EnemyTemplate(BaseModel):
-    svg = models.TextField()
-    name = models.CharField('Name', max_length=32)
-    max_health = models.IntegerField(default=1)
-    attack_range = models.IntegerField(default=1)
-    attack_damage = models.IntegerField(default=1)
-    speed = models.IntegerField(default=1)
-    initiative = models.IntegerField(default=0)
-    max_targets = models.IntegerField(default=1)
-    level = models.IntegerField(default=1)
-
-    location = models.ForeignKey(Location, on_delete=models.CASCADE)
-
-    def __str__(self):
-        return self.name
-
-
 class Entity(BaseModel):
     ENTITY_TYPES = (
         ('P', 'Player'),
@@ -130,6 +113,9 @@ class Entity(BaseModel):
     max_targets = models.IntegerField(default=1)
     max_health = models.IntegerField(default=1)
     health = models.IntegerField(default=1)
+    max_mana = models.IntegerField(default=1)
+    mana = models.IntegerField(default=1)
+
     level = models.IntegerField(default=1)
 
     svg = models.TextField()
@@ -148,6 +134,10 @@ class Entity(BaseModel):
         return math.floor((self.health / self.max_health) * 100)
 
     @property
+    def mana_perc(self):
+        return math.floor((self.mana / self.max_mana) * 100)
+
+    @property
     def render_svg(self):
         return self.svg.format(public_id=self.public_id, top=self.top, left=self.left)
 
@@ -159,17 +149,35 @@ class Entity(BaseModel):
         super().delete(*args, **kwargs)
 
 
+class PlayerClass(models.Model):
+    name = models.CharField('Class name')
+    str = models.IntegerField(default=1)
+    dex = models.IntegerField(default=1)
+    int = models.IntegerField(default=1)
+    vit = models.IntegerField(default=1)
+    mnd = models.IntegerField(default=1)
+
+
 class Player(Entity):
     location = models.ForeignKey(Location, null=True, blank=True, on_delete=models.SET_NULL)
     owner = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='user_characters')
     active = models.OneToOneField(User, null=True, blank=True, on_delete=models.CASCADE)
     last_travel = models.FloatField(default=0)
 
+    str = models.IntegerField(default=1)
+    dex = models.IntegerField(default=1)
+    int = models.IntegerField(default=1)
+    vit = models.IntegerField(default=1)
+    mnd = models.IntegerField(default=1)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # We may need to update previous relationships, so set those ids here
         self._previous_event_id = self.event_id
+
+    def __str__(self):
+        return self.name
 
     def save(self, *args, **kwargs):
         if not self.id:
@@ -197,6 +205,23 @@ class PlayerLog(BaseModel):
     log = models.TextField()
 
     player = models.ForeignKey(Player, on_delete=models.CASCADE)
+
+
+class EnemyTemplate(BaseModel):
+    svg = models.TextField()
+    name = models.CharField('Name', max_length=32)
+    max_health = models.IntegerField(default=1)
+    attack_range = models.IntegerField(default=1)
+    attack_damage = models.IntegerField(default=1)
+    speed = models.IntegerField(default=1)
+    initiative = models.IntegerField(default=0)
+    max_targets = models.IntegerField(default=1)
+    level = models.IntegerField(default=1)
+
+    location = models.ForeignKey(Location, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.name
 
 
 class Enemy(Entity):

@@ -2,12 +2,70 @@
 
 {% block content %}
 <div id="character-create-form">
-    <h3>Character creation</h3>
-    <form hx-post="{% url 'create_character' %}"
+    <form autocomplete="off"
+          hx-post="{% url 'create_character' %}"
           hx-target="#main-content"
           class="needs-validation">
 
-          {% include "core/form_partial.html" with button_text="Create" %}
+        <div class="row g-3 p-3">
+            <h3>Choose your starting class</h3>
+            {% for class in classes %}
+            <div class="col-auto">
+                <label class="card h-100 cursor-pointer position-relative custom-radio-label" style="width: 18rem;">
+                    <input type="radio" name="character_class" value="{{ class.id }}" class="custom-radio-radio"
+                           {% if forloop.first %}checked{% endif %}>
+                    <div class="card-body">
+                        <h5 class="card-title">{{ class.name }}</h5>
+                        <hr>
+                        <div class="stats-grid mb-3">
+                            <div class="d-flex justify-content-between small">
+                                <span>Strength</span><strong>{{ class.str }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between small">
+                                <span>Dexterity</span><strong>{{ class.dex }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between small">
+                                <span>Intelligence</span><strong>{{ class.int }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between small">
+                                <span>Vitality</span><strong>{{ class.vit }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between small">
+                                <span>Mind</span><strong>{{ class.mnd }}</strong>
+                            </div>
+                        </div>
+                        <p class="card-text small">Generated from database</p>
+                    </div>
+                    <div class="card-footer bg-transparent border-0 pb-3">
+                        <span class="badge bg-secondary">Sword</span>
+                        <span class="badge bg-secondary">Shield</span>
+                    </div>
+                </label>
+            </div>
+            {% endfor%}
+        </div>
+
+        <div class="row g-3 p-3">
+            <div class="col-6">
+                <input type="text"
+                   class="bg-black text-white w-100 no-outline custom-text needs-validation
+                    {% if form.errors.character_name %}is-invalid{% endif %}"
+                   name="character_name"
+                   placeholder="Enter character name..."
+                   value="{{ form.character_name.value|default_if_none:'' }}">
+
+                {% if form.errors.character_name %}
+                    <div class="text-danger small">{{ form.errors.character_name.0 }}</div>
+                {% endif %}
+
+            </div>
+        </div>
+
+        <div class="row g-3 p-3">
+            <div class="col-auto">
+                <button type="submit" class="btn btn-dark-outline">Create Character</button>
+            </div>
+        </div>
 
     </form>
 </div>

@@ -89,14 +89,14 @@
                     </div>
 
                     <div class="progress mb-2 position-relative bg-black border border-white" style="min-height: 20px;">
-                        <div class="progress-bar bg-info"
+                        <div id="status-mp-bar" class="progress-bar bg-info"
                              role="progressbar"
-                             style="width: 100%;"
-                             aria-valuenow="100"
+                             style="width: {{ character_mana_perc }}%;"
+                             aria-valuenow="{{ character.mana }}"
                              aria-valuemin="0"
-                             aria-valuemax="100"></div>
+                             aria-valuemax="{{ character.max_mana }}"></div>
                         <span class="justify-content-center d-flex position-absolute w-100 text-white text-shadow">
-                            100 / 100 MP</span>
+                            {{ character.mana }} / {{ character.max_mana }} MP</span>
                     </div>
 
                     <div class="scroll-window my-3 overflow-auto flex-grow-1 minheight0">
@@ -172,12 +172,22 @@ document.body.addEventListener('triggerMove', (event) => {
 document.body.addEventListener('updateStatus', (event) => {
     const e_hpbar = document.getElementById('status-hp-bar');
     const e_hptxt = document.getElementById('status-hp-text');
+
+    const e_mpbar = document.getElementById('status-mp-bar');
+    const e_mptxt = document.getElementById('status-mp-text');
+
     const e_lvl = document.getElementById('status-level');
 
     e_hpbar.style.width = `${event.detail.hp_perc}%`;
     e_hpbar.setAttribute('aria-valuenow', event.detail.hp_curr);
     e_hpbar.setAttribute('aria-valuemax', event.detail.hp_max);
     e_hptxt.innerText = `${event.detail.hp_curr} / ${event.detail.hp_max} HP`;
+
+    e_mpbar.style.width = `${event.detail.mp_perc}%`;
+    e_mpbar.setAttribute('aria-valuenow', event.detail.mp_curr);
+    e_mpbar.setAttribute('aria-valuemax', event.detail.mp_max);
+    e_mptxt.innerText = `${event.detail.mp_curr} / ${event.detail.mp_max} MP`;
+
     e_lvl.innerText = `Lvl ${event.detail.lvl}`;
 });
 

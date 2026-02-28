@@ -1,7 +1,9 @@
 import json
 import time
 import re
+import math
 
+from django.db.models import QuerySet
 from django.views.generic import TemplateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect, render, reverse
@@ -16,8 +18,8 @@ from rest_framework.authtoken.models import Token
 
 from core.utils import generators
 from authentication.models import User
-from .models import (World, Region, Location, RegionChatMessage, Player, EnemyTemplate, PlayerLog)
-from .forms import CharacterCreationForm, WorldCreationForm
+from .models import (World, Region, Location, RegionChatMessage, Player, EnemyTemplate, PlayerLog, PlayerClass)
+from .forms import CharacterCreateForm, WorldCreationForm
 from .event import process_dungeon_event, process_town_event, get_or_create_event
 
 
@@ -87,6 +89,13 @@ class BaseView(View):
         cleaned = re.sub(' +', ' ', cleaned)
 
         return cleaned.strip()
+
+    @staticmethod
+    def get_player_classes() -> QuerySet:
+        classes = PlayerClass.objects.all().order_by('id')
+
+        return classes
+
 
     @staticmethod
     def get_region_messages(player: Player, count: int = 50, full: bool = False):
@@ -243,20 +252,34 @@ class CreateCharacter(BaseView):
         if not user:
             return redirect('login')
 
-        form = CharacterCreationForm()
-        return render(request, self.template_name, {'form': form})
+        classes = self.get_player_classes()
+        form = CharacterCreateForm()
+
+        return render(request, self.template_name, {'form': form, 'classes': classes})
 
     def post(self, request):
         user = self.prep_user()
         if not user:
             return redirect('login')
 
-        form = CharacterCreationForm(request.POST)
+        form = CharacterCreateForm(request.POST)
 
         if form.is_valid():
-            player = form.save(commit=False)
+            player = Player()
+            player_class = form.cleaned_data['character_class']
+            player.name = form.cleaned_data['character_name']
+
             player.owner = user
-            player.health = player.max_health
+            player.str = player_class.str
+            player.dex = player_class.dex
+            player.int = player_class.int
+            player.vit = player_class.vit
+            player.mnd = player_class.mnd
+
+            player.max_health = player.health = math.floor(10 + player_class.vit + (player_class.str * 0.5))
+            player.max_mana = player.mana = math.floor(10 + player_class.vit + (player_class.int * 0.5))
+            player.initiative = player_class.dex
+            player.speed = 1 + math.floor(0.025 * player_class.dex + 0.005 * player_class.str)
 
             player.save()
 
@@ -273,7 +296,8 @@ class CreateCharacter(BaseView):
 
             return redirect('home')
 
-        return render(request, self.template_name, {'form': form})
+        classes = self.get_player_classes()
+        return render(request, self.template_name, {'form': form, 'classes': classes})
 
 
 class SelectWorld(BaseView):
@@ -380,6 +404,9 @@ class Map(BaseView):
                 trigger_data['updateStatus'] = {'hp_perc': player.health_perc,
                                                 'hp_curr': player.health,
                                                 'hp_max': player.max_health,
+                                                'mp_perc': player.mana_perc,
+                                                'mp_curr': player.mana,
+                                                'mp_max': player.max_mana,
                                                 'lvl': player.level}
 
                 if recent_player_logs['logs']:
