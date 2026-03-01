@@ -163,12 +163,19 @@ class Player(Entity):
     owner = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='user_characters')
     active = models.OneToOneField(User, null=True, blank=True, on_delete=models.CASCADE)
     last_travel = models.FloatField(default=0)
+    xp = models.IntegerField(default=0)
+    xp_next_lvl = models.IntegerField(default=0)
+    xp_prev_lvl = models.IntegerField(default=0)
 
     str = models.IntegerField(default=1)
     dex = models.IntegerField(default=1)
     int = models.IntegerField(default=1)
     vit = models.IntegerField(default=1)
     mnd = models.IntegerField(default=1)
+
+    @property
+    def xp_perc(self):
+        return math.floor(((self.xp - self.xp_prev_lvl) / self.xp_next_lvl) * 100)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -181,6 +188,7 @@ class Player(Entity):
 
     def save(self, *args, **kwargs):
         if not self.id:
+            self.xp_next_lvl = self.level**3 + 9*self.level**2
             self.type = 'P'
             self.svg = """
             <svg id="svg-{public_id}"
@@ -198,6 +206,17 @@ class Player(Entity):
             """
 
         super().save(*args, **kwargs)
+
+    def add_xp(self, add):
+        self.xp += add
+
+        if self.xp >= self.xp_next_lvl:
+            self.level += 1
+            PlayerLog.objects.create(player=self, htclass="", log=f"Leveled up to {self.level}!")
+            self.xp_prev_lvl = self.xp_next_lvl
+            self.xp_next_lvl = self.level**3 + 9*self.level**2
+
+        self.save()
 
 
 class PlayerLog(BaseModel):

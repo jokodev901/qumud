@@ -64,8 +64,9 @@ def get_or_create_event(location: Location) -> Event | None:
                     pos_round = 5 * round(left / 5)
                     e_positions.append(pos_round)
                     pos_count = e_positions.count(pos_round)
-                    flip = 1
 
+                    # Alternate vertical position of close enemies above and below
+                    flip = 1
                     if pos_count % 2 == 0:
                         flip = -1
 
@@ -153,6 +154,13 @@ def process_ticks(enemy_count: int, event_lock: Event, killed_entities: list[Any
                 elif entity.type == 'E':
                     enemy_count -= 1
                     entity.dead = time.time()
+                    players = Player.objects.filter(event=event_lock, active__isnull=False)
+
+                    for player in players:
+                        player.add_xp(entity.enemy.award_xp)
+
+                    Player.objects.filter(event_id=event_lock.id, active__isnull=False).update()
+
 
                 killed_entities.append(entity)
                 event_lock.entities.remove(entity)

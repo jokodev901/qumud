@@ -409,6 +409,9 @@ class Map(BaseView):
                                                 'mp_perc': player.mana_perc,
                                                 'mp_curr': player.mana,
                                                 'mp_max': player.max_mana,
+                                                'xp_perc': player.xp_perc,
+                                                'xp_curr': player.xp - player.xp_prev_lvl,
+                                                'xp_max': player.xp_next_lvl,
                                                 'lvl': player.level}
 
                 if recent_player_logs['logs']:
@@ -495,6 +498,8 @@ class Map(BaseView):
                 context['character'] = player
                 context['character_health_perc'] = player.health_perc
                 context['character_mana_perc'] = player.mana_perc
+                context['character_xp_perc'] = player.xp_perc
+                context['xp_curr'] = player.xp - player.xp_prev_lvl
 
                 player.owner.last_refresh = time.time()
                 player.owner.save(update_fields=['last_refresh'])
