@@ -351,8 +351,11 @@ class SelectWorld(BaseView):
                                                                   biome=region_data['biome'], count=5)
 
                         for enemy in enemy_temps:
-                            EnemyTemplate.objects.create(location=d, name=enemy['name'], svg=enemy['svg'],
-                                                         max_health=enemy['max_health'])
+                            EnemyTemplate.objects.create(location=d,
+                                                         name=enemy['name'],
+                                                         svg=enemy['svg'],
+                                                         max_health=enemy['max_health'],
+                                                         level=dungeon['level'])
 
                     world.save()
 
@@ -399,7 +402,6 @@ class Map(BaseView):
                 event_data, event_joined = self.get_event_data(player=player)
 
                 context['character'] = player
-                context['character_health_perc'] = player.health_perc
 
                 trigger_data['updateStatus'] = {'hp_perc': player.health_perc,
                                                 'hp_curr': player.health,
@@ -407,6 +409,9 @@ class Map(BaseView):
                                                 'mp_perc': player.mana_perc,
                                                 'mp_curr': player.mana,
                                                 'mp_max': player.max_mana,
+                                                'xp_perc': player.xp_perc,
+                                                'xp_curr': player.xp - player.xp_prev_lvl,
+                                                'xp_max': player.xp_next_lvl,
                                                 'lvl': player.level}
 
                 if recent_player_logs['logs']:
@@ -492,6 +497,9 @@ class Map(BaseView):
                 context['messages'] = recent_messages
                 context['character'] = player
                 context['character_health_perc'] = player.health_perc
+                context['character_mana_perc'] = player.mana_perc
+                context['character_xp_perc'] = player.xp_perc
+                context['xp_curr'] = player.xp - player.xp_prev_lvl
 
                 player.owner.last_refresh = time.time()
                 player.owner.save(update_fields=['last_refresh'])

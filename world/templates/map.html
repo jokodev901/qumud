@@ -95,8 +95,19 @@
                              aria-valuenow="{{ character.mana }}"
                              aria-valuemin="0"
                              aria-valuemax="{{ character.max_mana }}"></div>
-                        <span class="justify-content-center d-flex position-absolute w-100 text-white text-shadow">
+                        <span id="status-mp-text" class="justify-content-center d-flex position-absolute w-100 text-white text-shadow">
                             {{ character.mana }} / {{ character.max_mana }} MP</span>
+                    </div>
+
+                    <div class="progress mb-2 position-relative bg-black border border-white" style="min-height: 20px;">
+                        <div id="status-xp-bar" class="progress-bar bg-secondary"
+                             role="progressbar"
+                             style="width: {{ character_xp_perc }}%;"
+                             aria-valuenow="{{ character.xp }}"
+                             aria-valuemin="0"
+                             aria-valuemax="{{ character.xp_next_lvl }}"></div>
+                        <span id="status-xp-text" class="justify-content-center d-flex position-absolute w-100 text-white text-shadow">
+                            {{ xp_curr }} / {{ character.xp_next_lvl }} XP</span>
                     </div>
 
                     <div class="scroll-window my-3 overflow-auto flex-grow-1 minheight0">
@@ -176,6 +187,9 @@ document.body.addEventListener('updateStatus', (event) => {
     const e_mpbar = document.getElementById('status-mp-bar');
     const e_mptxt = document.getElementById('status-mp-text');
 
+    const e_xpbar = document.getElementById('status-xp-bar');
+    const e_xptxt = document.getElementById('status-xp-text');
+
     const e_lvl = document.getElementById('status-level');
 
     e_hpbar.style.width = `${event.detail.hp_perc}%`;
@@ -187,6 +201,11 @@ document.body.addEventListener('updateStatus', (event) => {
     e_mpbar.setAttribute('aria-valuenow', event.detail.mp_curr);
     e_mpbar.setAttribute('aria-valuemax', event.detail.mp_max);
     e_mptxt.innerText = `${event.detail.mp_curr} / ${event.detail.mp_max} MP`;
+
+    e_xpbar.style.width = `${event.detail.xp_perc}%`;
+    e_xpbar.setAttribute('aria-valuenow', event.detail.xp_curr);
+    e_xpbar.setAttribute('aria-valuemax', event.detail.xp_max);
+    e_xptxt.innerText = `${event.detail.xp_curr} / ${event.detail.xp_max} XP`;
 
     e_lvl.innerText = `Lvl ${event.detail.lvl}`;
 });
