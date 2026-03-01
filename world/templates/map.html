@@ -202,6 +202,16 @@ document.body.addEventListener('updateStatus', (event) => {
     e_mpbar.setAttribute('aria-valuemax', event.detail.mp_max);
     e_mptxt.innerText = `${event.detail.mp_curr} / ${event.detail.mp_max} MP`;
 
+    const currentXPWidth = parseFloat(e_xpbar.style.width) || 0;
+    if (currentXPWidth != event.detail.xp_perc) {
+        if (currentXPWidth > event.detail.xp_perc) {
+            e_xpbar.classList.add('no-transition');
+        }
+        else {
+            e_xpbar.classList.remove('no-transition');
+        }
+    }
+
     e_xpbar.style.width = `${event.detail.xp_perc}%`;
     e_xpbar.setAttribute('aria-valuenow', event.detail.xp_curr);
     e_xpbar.setAttribute('aria-valuemax', event.detail.xp_max);

@@ -1,6 +1,11 @@
 /* Text shadow for status bar text */
 .text-shadow { text-shadow: 2px 2px 2px #000; }
 
+/* Conditional overrides */
+.no-transition {
+    transition: none !important;
+}
+
 /* Navbar */
 .navbar-custom {
     border-bottom: 3px solid #333333;
@@ -45,6 +50,7 @@
     scrollbar-color: #fff #000;
 }
 
+/* Status Bars */
 .progress {
     border-radius: 0px;
 }
