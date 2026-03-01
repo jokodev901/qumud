@@ -135,7 +135,9 @@ class PlayerAdmin(admin.ModelAdmin):
     fieldsets = (
         ('Identity', {'fields': ('public_id', 'name', 'owner', 'active')}),
         ('State', {'fields': ('location', 'event', 'target', 'position', 'svg')}),
-        ('Stats', {'fields': (('level', 'health', 'max_health', 'mana', 'max_mana'), ('attack_damage', 'attack_range', 'speed'))}),
+        ('Stats', {'fields': (('level', 'health', 'max_health', 'mana', 'max_mana'),
+                              ('str', 'dex', 'int', 'vit', 'mnd'),
+                              ('attack_damage', 'attack_range', 'speed'))}),
     )
 
 

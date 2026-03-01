@@ -217,14 +217,23 @@ class EnemyTemplate(BaseModel):
     initiative = models.IntegerField(default=0)
     max_targets = models.IntegerField(default=1)
     level = models.IntegerField(default=1)
+    award_xp = models.IntegerField(default=1)
 
     location = models.ForeignKey(Location, on_delete=models.CASCADE)
 
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.award_xp = math.floor(((self.level**2) / 5) + self.level)
+
+        super().save(*args, **kwargs)
+
 
 class Enemy(Entity):
+    award_xp = models.IntegerField(default=1)
+
     def save(self, *args, **kwargs):
         if not self.id:
             self.type = 'E'

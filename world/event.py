@@ -1,6 +1,7 @@
 import random
 import time
 import math
+from typing import Any
 
 from django.db import transaction
 from django.db.models import Prefetch, Count, Q
@@ -70,11 +71,22 @@ def get_or_create_event(location: Location) -> Event | None:
 
                     top = utils.clamp(50 + (math.floor(pos_count / 2) * 10 * flip), 5, 95)
 
-                    e = Enemy.objects.create(svg=enemy.svg, event=event, event_joined=time.time(), name=enemy.name,
-                                             max_health=enemy.max_health, health=enemy.max_health,
-                                             attack_range=enemy.attack_range, attack_damage=enemy.attack_damage,
-                                             speed=enemy.speed, initiative=enemy.initiative, max_targets=1,
-                                             level=1, position=position, left=left, top=top)
+                    e = Enemy.objects.create(event=event,
+                                             event_joined=time.time(),
+                                             position=position,
+                                             left=left,
+                                             top=top,
+                                             svg=enemy.svg,
+                                             name=enemy.name,
+                                             health=enemy.max_health,
+                                             max_health=enemy.max_health,
+                                             attack_range=enemy.attack_range,
+                                             attack_damage=enemy.attack_damage,
+                                             speed=enemy.speed,
+                                             initiative=enemy.initiative,
+                                             max_targets=enemy.max_targets,
+                                             level=enemy.level,
+                                             award_xp=enemy.award_xp)
 
                     eventlogs.append(
                         EventLog(event=event,
@@ -85,6 +97,106 @@ def get_or_create_event(location: Location) -> Event | None:
                 EventLog.objects.bulk_create(eventlogs)
 
     return event
+
+
+def process_ticks(enemy_count: int, event_lock: Event, killed_entities: list[Any], newlogs: list[Any], player: Player,
+                  player_count: int, player_logs: list[Any], ticks: int | Any):
+    for tick in range(ticks):
+        e_positions = []
+        p_positions = []
+
+        for entity in event_lock.entities[:]:
+            if entity.type == 'E':
+                dmg = random.choice(range(1, 5))
+                entity.health -= dmg
+
+                newlogs.append(
+                    EventLog(event=event_lock,
+                             htclass='text-danger log-entry',
+                             log=f'{entity.name} took {dmg} damage')
+                )
+
+            elif entity.type == 'P':
+                entity.health -= 1
+
+                newlogs.append(
+                    EventLog(event=event_lock,
+                             htclass='text-danger log-entry',
+                             log=f'{entity.name} took 1 damage')
+                )
+
+            if entity.health < 1:
+                newlogs.append(
+                    EventLog(event=event_lock,
+                             htclass='text-primary log-entry',
+                             log=f'{entity.name} is dead')
+                )
+
+                if entity.type == 'P':
+                    player_logs.append(
+                        PlayerLog(player=player,
+                                  htclass='text-danger',
+                                  log=f'YOU DIED')
+                    )
+
+                    player_count -= 1
+
+                    # Send player to town and heal them
+                    # this is where death penalties would be processed
+                    entity.health = entity.max_health
+                    town = Location.objects.filter(region=event_lock.location.region, type='T').first()
+                    Player.objects.filter(id=entity.id).update(last_travel=time.time(),
+                                                               location=town,
+                                                               health=entity.max_health,
+                                                               event=None)
+
+                elif entity.type == 'E':
+                    enemy_count -= 1
+                    entity.dead = time.time()
+
+                killed_entities.append(entity)
+                event_lock.entities.remove(entity)
+
+                continue
+
+            entity.position = (entity.position + random.choice((-3, -2, -1, 0, 1, 2, 3))) % event_lock.size
+            entity.left = utils.clamp(((entity.position / event_lock.size) * 100), 5, 95)
+
+            pos_round = 5 * round(entity.left / 5)
+
+            if entity.type == 'P':
+                p_positions.append(pos_round)
+                pos_count = p_positions.count(pos_round)
+
+            elif entity.type == 'E':
+                e_positions.append(pos_round)
+                pos_count = e_positions.count(pos_round)
+
+            flip = 1
+
+            if pos_count % 2 == 0:
+                flip = -1
+
+            entity.top = utils.clamp(50 + (math.floor(pos_count / 2) * 15 * flip), 5, 95)
+
+        if enemy_count == 0:
+            # All enemies are dead, log it and stop processing ticks
+            newlogs.append(
+                EventLog(event=event_lock,
+                         htclass='text-success log-entry',
+                         log=f'All enemies defeated!')
+            )
+            player_logs.append(
+                PlayerLog(player=player,
+                          htclass='text-success',
+                          log=f'Won battle at {event_lock.location}!')
+            )
+
+            break
+
+        elif player_count == 0:
+            event_lock.active = False
+            pass
 
 
 def process_town_event(player: Player, event: Event, full: bool) -> dict | None:
@@ -150,102 +262,7 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
             newlogs = []
             killed_entities = []
 
-            for tick in range(ticks):
-                e_positions = []
-                p_positions = []
-
-                for entity in event_lock.entities[:]:
-                    if entity.type == 'E':
-                        dmg = random.choice(range(1,5))
-                        entity.health -= dmg
-
-                        newlogs.append(
-                            EventLog(event=event_lock,
-                                     htclass='text-danger log-entry',
-                                     log=f'{entity.name} took {dmg} damage')
-                        )
-
-                    elif entity.type == 'P':
-                        entity.health -= 1
-
-                        newlogs.append(
-                            EventLog(event=event_lock,
-                                     htclass='text-danger log-entry',
-                                     log=f'{entity.name} took 1 damage')
-                        )
-
-                    if entity.health < 1:
-                        newlogs.append(
-                            EventLog(event=event_lock,
-                                     htclass='text-primary log-entry',
-                                     log=f'{entity.name} is dead')
-                        )
-
-                        if entity.type == 'P':
-                            player_logs.append(
-                                PlayerLog(player=player,
-                                          htclass='text-danger',
-                                          log=f'YOU DIED')
-                            )
-
-                            player_count -= 1
-
-                            # Send player to town and heal them
-                            # this is where death penalties would be processed
-                            entity.health = entity.max_health
-                            town = Location.objects.filter(region=event_lock.location.region, type='T').first()
-                            Player.objects.filter(id=entity.id).update(last_travel=time.time(),
-                                                                       location=town,
-                                                                       health=entity.max_health,
-                                                                       event=None)
-
-                        elif entity.type == 'E':
-                            enemy_count -= 1
-                            entity.dead = time.time()
-
-                        killed_entities.append(entity)
-                        event_lock.entities.remove(entity)
-
-                        continue
-
-                    entity.position = (entity.position + random.choice((-3, -2, -1, 0, 1, 2, 3))) % event_lock.size
-                    entity.left = utils.clamp(((entity.position / event_lock.size) * 100), 5, 95)
-
-                    pos_round = 5 * round(entity.left / 5)
-
-                    if entity.type == 'P':
-                        p_positions.append(pos_round)
-                        pos_count = p_positions.count(pos_round)
-
-                    elif entity.type == 'E':
-                        e_positions.append(pos_round)
-                        pos_count = e_positions.count(pos_round)
-
-                    flip = 1
-
-                    if pos_count % 2 == 0:
-                        flip = -1
-
-                    entity.top = utils.clamp(50 + (math.floor(pos_count / 2) * 15 * flip), 5, 95)
-
-                if enemy_count == 0:
-                    # All enemies are dead, log it and stop processing ticks
-                    newlogs.append(
-                        EventLog(event=event_lock,
-                                 htclass='text-success log-entry',
-                                 log=f'All enemies defeated!')
-                    )
-                    player_logs.append(
-                        PlayerLog(player=player,
-                                  htclass='text-success',
-                                  log=f'Won battle at {event_lock.location}!')
-                    )
-
-                    break
-
-                elif player_count == 0:
-                    event_lock.active = False
-                    pass
+            process_ticks(enemy_count, event_lock, killed_entities, newlogs, player, player_count, player_logs, ticks)
 
             # Process event logs
             if newlogs:
