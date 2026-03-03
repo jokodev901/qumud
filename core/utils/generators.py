@@ -66,7 +66,7 @@ def generate_region(seed: str, level: int) -> dict:
     return region_dict
 
 
-def generate_enemies(seed: str, level: int, biome: str, count: int) -> list[dict]:
+def procgen_enemies(seed: str, biome: str, count: int) -> list[dict]:
     enemies = []
     random.seed(seed)
 
@@ -83,7 +83,7 @@ def generate_enemies(seed: str, level: int, biome: str, count: int) -> list[dict
         name = " ".join(words).title()
         svg = generate_abstract_entity(seed_string=name)
 
-        enemy_dict = {'name': name, 'level': level, 'svg': svg, 'max_health': 20}
+        enemy_dict = {'name': name, 'svg': svg}
         enemies.append(enemy_dict)
 
     return enemies

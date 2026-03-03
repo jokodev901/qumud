@@ -21,6 +21,7 @@ from authentication.models import User
 from .models import (World, Region, Location, RegionChatMessage, Player, EnemyTemplate, PlayerLog, PlayerClass)
 from .forms import CharacterCreateForm, WorldCreationForm
 from .event import process_dungeon_event, process_town_event, get_or_create_event
+from .enemy import generate_enemy_templates
 
 
 class BaseView(View):
@@ -347,15 +348,7 @@ class SelectWorld(BaseView):
                         d = Location.objects.create(name=dungeon['name'], level=dungeon['level'], region=region,
                                                     type='D', spawn_rate=5, max_players=3)
 
-                        enemy_temps = generators.generate_enemies(seed=dungeon['name'], level=dungeon['level'],
-                                                                  biome=region_data['biome'], count=5)
-
-                        for enemy in enemy_temps:
-                            EnemyTemplate.objects.create(location=d,
-                                                         name=enemy['name'],
-                                                         svg=enemy['svg'],
-                                                         max_health=enemy['max_health'],
-                                                         level=dungeon['level'])
+                        generate_enemy_templates(loc=d, biome=region_data['biome'], count=5)
 
                     world.save()
 

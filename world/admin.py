@@ -3,7 +3,7 @@ from datetime import datetime
 from .models import (
     World, Region, Location,
     Event, EnemyTemplate, Entity, Player, Enemy,
-    RegionChatMessage, EventLog, PlayerLog
+    RegionChatMessage, EventLog, PlayerLog, EnemyArchetype
 )
 
 
@@ -103,6 +103,13 @@ class EventAdmin(admin.ModelAdmin):
 
     last_update_fmt.short_description = "Last Update"
     ended_fmt.short_description = "Ended"
+
+
+@admin.register(EnemyArchetype)
+class EnemyArchetypeAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    list_filter = ('name',)
+    search_fields = ('name',)
 
 
 @admin.register(EnemyTemplate)
