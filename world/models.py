@@ -107,7 +107,8 @@ class Entity(BaseModel):
     type = models.CharField('Entity type', max_length=1, choices=ENTITY_TYPES)
 
     attack_range = models.IntegerField(default=1)
-    attack_damage = models.IntegerField(default=1)
+    min_damage = models.IntegerField(default=1)
+    max_damage = models.IntegerField(default=1)
     speed = models.IntegerField(default=1)
     initiative = models.IntegerField(default=0)
     max_targets = models.IntegerField(default=1)
@@ -225,18 +226,34 @@ class PlayerLog(BaseModel):
     player = models.ForeignKey(Player, on_delete=models.CASCADE)
 
 
+class EnemyArchetype(models.Model):
+    name = models.CharField(max_length=64)
+    dmg_dev = models.FloatField('Percent deviation from center for damage range', default=1)
+    dmg_multi = models.FloatField('Damage multiplier for stronger vs weaker attacks', default=1)
+    attack_range = models.IntegerField(default=1)
+    speed = models.IntegerField(default=1)
+    attack_rate = models.IntegerField('Attacks per round', default=1)
+    hp_multi = models.FloatField('HP multiplier', default=1)
+    init_multi = models.FloatField('Initiative multiplier', default=1)
+
+    def __str__(self):
+        return self.name
+
+
 class EnemyTemplate(BaseModel):
     svg = models.TextField()
     name = models.CharField('Name', max_length=32)
     max_health = models.IntegerField(default=1)
     attack_range = models.IntegerField(default=1)
-    attack_damage = models.IntegerField(default=1)
+    min_damage = models.IntegerField(default=1)
+    max_damage = models.IntegerField(default=1)
     speed = models.IntegerField(default=1)
     initiative = models.IntegerField(default=0)
     max_targets = models.IntegerField(default=1)
     level = models.IntegerField(default=1)
     award_xp = models.IntegerField(default=1)
 
+    archetype = models.ForeignKey(EnemyArchetype, on_delete=models.CASCADE)
     location = models.ForeignKey(Location, on_delete=models.CASCADE)
 
     def __str__(self):

@@ -57,8 +57,11 @@ def get_or_create_event(location: Location) -> Event | None:
                 e_temps = location.enemytemplate_set.all()
                 e_positions = []
 
-                # Just spawn one of each enemy type for now
-                for enemy in e_temps:
+                # Spawn 2-5 enemies of any combination from the template set
+                num_enemy = random.choice(range(2, 6))
+                templates = random.choices(e_temps, k=num_enemy)
+
+                for enemy in templates:
                     position = 55 + enemy.initiative
                     left = utils.clamp(((position / event.size) * 100), 5, 95)
                     pos_round = 5 * round(left / 5)
@@ -82,7 +85,8 @@ def get_or_create_event(location: Location) -> Event | None:
                                              health=enemy.max_health,
                                              max_health=enemy.max_health,
                                              attack_range=enemy.attack_range,
-                                             attack_damage=enemy.attack_damage,
+                                             min_damage=enemy.min_damage,
+                                             max_damage=enemy.max_damage,
                                              speed=enemy.speed,
                                              initiative=enemy.initiative,
                                              max_targets=enemy.max_targets,
