@@ -1,0 +1,78 @@
+{% extends base_template %}
+
+{% block content %}
+<div class="row g-2 h-50">
+    <div class="col-sm-3 flex-sm-fill">
+        <div id="stats-card" class="card h-100">
+            <div class="card-header">
+                <span>Character Stats</span>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-column flex-grow-1">
+                    <div class="fs-6">Strength: 14</div>
+                    <div class="fs-6">Dexterity: 14</div>
+                    <div class="fs-6">Intelligence: 14</div>
+                    <div class="fs-6">Vitality: 14</div>
+                    <div class="fs-6">Mind: 14</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-3 flex-sm-fill">
+        <div id="equip-card" class="card h-100">
+            <div class="card-header">
+                <span>Equipment</span>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-column flex-grow-1">
+                    <div>Head</div>
+                    <div>Torso</div>
+                    <div>Gloves</div>
+                    <div>Boots</div>
+                    <div>Amulet</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row mt-3">
+    <div class="col-md-7 flex-fill">
+        <div id="inventory-card" class="card">
+            <div class="card-header">
+                <span>Inventory</span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-sm-3">
+                        <div class="d-flex flex-column p-3 border border-1 border-secondary">
+                            <div>ITEM PREVIEW</div>
+                            <div>ITEM PREVIEW</div>
+                            <div>ITEM PREVIEW</div>
+                            <div>ITEM PREVIEW</div>
+                            <div>ITEM PREVIEW</div>
+                            <div>ITEM PREVIEW</div>
+                            <div>ITEM PREVIEW</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-3 d-flex flex-sm-fill flex-wrap">
+                        {% for _ in "1234512387123987129837192873918273981723987aefaeaefaef12f12f12f12f12f12f12f12f" %}
+                        <div class="mx-1">
+                            <input type="radio"
+                                   id="item-public_id_goes_here{{ forloop.counter }}"
+                                   name="selected_id"
+                                   value="public_id_goes_here{{ forloop.counter }}"
+                                   class="custom-radio-radio"
+                                   {% if forloop.first %}checked{% endif %}>
+                            <label for="item-public_id_goes_here{{ forloop.counter }}" class="custom-radio-label">
+                                <span class="display-value mx-2 py-2">ITEM{{ forloop.counter }}</span>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

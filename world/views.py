@@ -231,6 +231,19 @@ class SelectCharacter(BaseView):
         return HttpResponse('Invalid selection', status=400)
 
 
+class ManageCharacter(BaseView):
+    template_name = 'character.html'
+
+    def get(self, request):
+        user = self.prep_user()
+        if not user:
+            return redirect('login')
+
+        context = {}
+
+        return render(request, self.template_name, context)
+
+
 class GetPlayerCharacters(BaseView):
     template_name = 'player_characters.html'
 

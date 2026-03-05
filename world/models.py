@@ -166,6 +166,7 @@ class Player(Entity):
     last_travel = models.FloatField(default=0)
     xp = models.IntegerField(default=0)
     xp_next_lvl = models.IntegerField(default=0)
+    stat_points = models.IntegerField(default=0)
 
     str = models.IntegerField(default=1)
     dex = models.IntegerField(default=1)
@@ -213,6 +214,7 @@ class Player(Entity):
         if self.xp >= self.xp_next_lvl:
             self.xp = self.xp % self.xp_next_lvl
             self.level += 1
+            self.stat_points += 5
             PlayerLog.objects.create(player=self, htclass="", log=f"Leveled up to {self.level}!")
             self.xp_next_lvl = self.level**3 + 9*self.level**2
 
