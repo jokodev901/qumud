@@ -1,19 +1,100 @@
 {% extends base_template %}
 
 {% block content %}
-<div class="row g-2 h-50">
+<div class="row g-2">
     <div class="col-sm-3 flex-sm-fill">
         <div id="stats-card" class="card h-100">
             <div class="card-header">
                 <span>Character Stats</span>
             </div>
             <div class="card-body">
-                <div class="d-flex flex-column flex-grow-1">
-                    <div class="fs-6">Strength: 14</div>
-                    <div class="fs-6">Dexterity: 14</div>
-                    <div class="fs-6">Intelligence: 14</div>
-                    <div class="fs-6">Vitality: 14</div>
-                    <div class="fs-6">Mind: 14</div>
+                <div class="row flex-nowrap gx-2 gx-md-3">
+
+                    <div class="col-7 border-end border-secondary d-flex flex-column">
+
+                        <div class="fw-bold border-bottom border-secondary pb-1 mb-2 text-nowrap">Points: 5</div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="text-nowrap">STR</div>
+                            <div class="text-nowrap">
+                                <button class="border border-secondary text-white bg-dark">-</button>
+                                <span class="mx-1">140</span>
+                                <button class="border border-secondary text-white bg-dark">+</button>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="text-nowrap">DEX</div>
+                            <div class="text-nowrap">
+                                <button class="border border-secondary text-white bg-dark">-</button>
+                                <span class="mx-1">140</span>
+                                <button class="border border-secondary text-white bg-dark">+</button>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="text-nowrap">INT</div>
+                            <div class="text-nowrap">
+                                <button class="border border-secondary text-white bg-dark">-</button>
+                                <span class="mx-1">140</span>
+                                <button class="border border-secondary text-white bg-dark">+</button>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="text-nowrap">VIT</div>
+                            <div class="text-nowrap">
+                                <button class="border border-secondary text-white bg-dark">-</button>
+                                <span class="mx-1">140</span>
+                                <button class="border border-secondary text-white bg-dark">+</button>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="text-nowrap">MND</div>
+                            <div class="text-nowrap">
+                                <button class="border border-secondary text-white bg-dark">-</button>
+                                <span class="mx-1">140</span>
+                                <button class="border border-secondary text-white bg-dark">+</button>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="col-5 d-flex flex-column justify-content-around">
+
+                        <div class="d-flex justify-content-between text-nowrap">
+                            <div>Health</div>
+                            <div>100</div>
+                        </div>
+
+                        <div class="d-flex justify-content-between text-nowrap">
+                            <div>Mana</div>
+                            <div>100</div>
+                        </div>
+
+                        <div class="d-flex justify-content-between text-nowrap">
+                            <div>Damage</div>
+                            <div>10K-15K</div>
+                        </div>
+
+                        <div class="d-flex justify-content-between text-nowrap">
+                            <div>Speed</div>
+                            <div>2</div>
+                        </div>
+
+                        <div class="d-flex justify-content-between text-nowrap">
+                            <div>Init</div>
+                            <div>20</div>
+                        </div>
+
+                        <div class="d-flex justify-content-between text-nowrap">
+                            <div>Range</div>
+                            <div>4</div>
+                        </div>
+
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -43,18 +124,20 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-sm-3">
-                        <div class="d-flex flex-column p-3 border border-1 border-secondary">
-                            <div>ITEM PREVIEW</div>
-                            <div>ITEM PREVIEW</div>
-                            <div>ITEM PREVIEW</div>
-                            <div>ITEM PREVIEW</div>
-                            <div>ITEM PREVIEW</div>
-                            <div>ITEM PREVIEW</div>
-                            <div>ITEM PREVIEW</div>
+                    <div class="col-sm-3 d-flex justify-content-center align-items-center">
+                        <div id="equip-window" class="d-flex flex-column p-3 border border-1 border-secondary">
+                            <div class="text-info">Iron Longsword of Slaying</div>
+                            <div>Damage: 2-5</div>
+                            <div>Attack Speed: 1</div>
+                            <div>Range: 1</div>
+                            <div class="text-info">+1 dmg per enemy killed in battle</div>
                         </div>
                     </div>
-                    <div class="col-sm-3 d-flex flex-sm-fill flex-wrap">
+                    <div hx-get="/"
+                         hx-trigger="change"
+                         hx-target="#equip-window"
+                         hx-include="closest .card-body"
+                         class="col-sm-3 d-flex align-content-start flex-fill flex-wrap">
                         {% for _ in "1234512387123987129837192873918273981723987aefaeaefaef12f12f12f12f12f12f12f12f" %}
                         <div class="mx-1">
                             <input type="radio"
