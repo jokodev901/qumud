@@ -145,7 +145,7 @@ class PlayerAdmin(admin.ModelAdmin):
         ('Stats', {'fields': (('level', 'xp', 'xp_next_lvl'),
                               ('health', 'max_health', 'mana', 'max_mana'),
                               ('str', 'dex', 'int', 'vit', 'mnd'),
-                              ('attack_damage', 'attack_range', 'speed'))}),
+                              ('min_damage', 'max_damage', 'attack_range', 'speed', 'stat_points'))}),
     )
 
 

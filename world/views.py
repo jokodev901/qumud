@@ -235,11 +235,11 @@ class ManageCharacter(BaseView):
     template_name = 'character.html'
 
     def get(self, request):
-        user = self.prep_user()
-        if not user:
-            return redirect('login')
+        player = self.prep_player()
+        if not player:
+            return redirect('home')
 
-        context = {}
+        context = {"character": player}
 
         return render(request, self.template_name, context)
 
