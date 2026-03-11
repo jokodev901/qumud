@@ -11,113 +11,142 @@
                 <div class="row flex-nowrap gx-2 gx-md-3">
 
                     <div class="col-7 border-end border-secondary d-flex flex-column">
-                        <form id="stat-allocator-form"
+                        <form id="stat-form"
                               hx-post=""
                               hx-target="this"
                               hx-swap="outerHTML"
-                              data-total-points="{{ character.stat_points }}">
+                              data-stat-orig="{{ character.stat_points }}"
+                              data-stat-points="{{ character.stat_points }}">
 
                             <div class="d-flex justify-content-between align-items-center border-bottom border-secondary">
                                 <div class="fw-bold pb-1 mb-2 text-nowrap">
-                                    Points: {{ character.stat_points }}</div>
-                                <button type="submit" class="border border-secondary pb-1 mb-2 text-white bg-black
-                                                             btn-hover">Submit</button>
+                                    Points: <span id="stat-points">{{ character.stat_points }}</span>
+                                </div>
+                                <button id="submit-stats-btn" type="submit"
+                                        class="border border-secondary pb-1 mb-2 text-white
+                                               bg-black invisible btn-hover">Submit</button>
                             </div>
 
-                            <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="d-flex justify-content-between align-items-center mb-1 stat-row"
+                                 data-stat-id="str"
+                                 data-base-val="{{ character.str }}">
                                 <div class="text-nowrap">Strength</div>
                                 <div class="d-flex align-items-center justify-content-end">
                                     <div class="d-flex justify-content-center">
-                                        <button class="stat-minus border border-secondary text-white bg-black btn-hover
+                                        <button type="button"
+                                                class="stat-min-btn border border-secondary text-white bg-black btn-hover
                                                        invisible">-</button>
                                     </div>
                                     <div class="text-center fw-bold" style="width: 3rem;">
-                                        <span>{{ character.str }}</span>
+                                        <span class="stat-display">{{ character.str }}</span>
                                     </div>
                                     <div class="d-flex justify-content-center">
-                                        <button class="stat-minus border border-secondary text-white bg-black btn-hover
+                                        <button type="button"
+                                                class="stat-add-btn border border-secondary text-white bg-black btn-hover
                                                       {% if character.stat_points %} visible
                                                       {% else %} invisible
                                                       {% endif %}">+</button>
                                     </div>
                                 </div>
+                                <input type="hidden" name="str_added" class="stat-input" value="0">
                             </div>
 
-                            <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="d-flex justify-content-between align-items-center mb-1 stat-row"
+                                 data-stat-id="dex"
+                                 data-base-val="{{ character.dex }}">
                                 <div class="text-nowrap">Dexterity</div>
                                 <div class="d-flex align-items-center justify-content-end">
                                     <div class="d-flex justify-content-center">
-                                        <button class="stat-minus border border-secondary text-white bg-black btn-hover
+                                        <button type="button"
+                                                class="stat-min-btn border border-secondary text-white bg-black btn-hover
                                                        invisible">-</button>
                                     </div>
                                     <div class="text-center fw-bold" style="width: 3rem;">
-                                        <span>{{ character.dex }}</span>
+                                        <span class="stat-display">{{ character.dex }}</span>
                                     </div>
                                     <div class="d-flex justify-content-center">
-                                        <button class="stat-minus border border-secondary text-white bg-black btn-hover
+                                        <button type="button"
+                                                class="stat-add-btn border border-secondary text-white bg-black btn-hover
                                                       {% if character.stat_points %} visible
                                                       {% else %} invisible
                                                       {% endif %}">+</button>
                                     </div>
                                 </div>
+                                <input type="hidden" name="dex_added" class="stat-input" value="0">
                             </div>
 
-                            <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="d-flex justify-content-between align-items-center mb-1 stat-row"
+                                 data-stat-id="int"
+                                 data-base-val="{{ character.int }}">
                                 <div class="text-nowrap">Intellect</div>
                                 <div class="d-flex align-items-center justify-content-end">
                                     <div class="d-flex justify-content-center">
-                                        <button class="stat-minus border border-secondary text-white bg-black btn-hover
+                                        <button type="button"
+                                                class="stat-min-btn border border-secondary text-white bg-black btn-hover
                                                        invisible">-</button>
                                     </div>
                                     <div class="text-center fw-bold" style="width: 3rem;">
-                                        <span>{{ character.int }}</span>
+                                        <span class="stat-display">{{ character.int }}</span>
                                     </div>
                                     <div class="d-flex justify-content-center">
-                                        <button class="stat-minus border border-secondary text-white bg-black btn-hover
+                                        <button type="button"
+                                                class="stat-add-btn border border-secondary text-white bg-black btn-hover
                                                       {% if character.stat_points %} visible
                                                       {% else %} invisible
                                                       {% endif %}">+</button>
                                     </div>
                                 </div>
+                                <input type="hidden" name="int_added" class="stat-input" value="0">
                             </div>
 
-                            <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="d-flex justify-content-between align-items-center mb-1 stat-row"
+                                 data-stat-id="vit"
+                                 data-base-val="{{ character.vit }}">
                                 <div class="text-nowrap">Vitality</div>
                                 <div class="d-flex align-items-center justify-content-end">
                                     <div class="d-flex justify-content-center">
-                                        <button class="stat-minus border border-secondary text-white bg-black btn-hover
+                                        <button type="button"
+                                                class="stat-min-btn border border-secondary text-white bg-black btn-hover
                                                        invisible">-</button>
                                     </div>
                                     <div class="text-center fw-bold" style="width: 3rem;">
-                                        <span>{{ character.vit }}</span>
+                                        <span class="stat-display">{{ character.vit }}</span>
                                     </div>
                                     <div class="d-flex justify-content-center">
-                                        <button class="stat-minus border border-secondary text-white bg-black btn-hover
+                                        <button type="button"
+                                                class="stat-add-btn border border-secondary text-white bg-black btn-hover
                                                       {% if character.stat_points %} visible
                                                       {% else %} invisible
                                                       {% endif %}">+</button>
                                     </div>
                                 </div>
+                                <input type="hidden" name="vit_added" class="stat-input" value="0">
                             </div>
 
-                            <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="d-flex justify-content-between align-items-center mb-1 stat-row"
+                                 data-stat-id="mnd"
+                                 data-base-val="{{ character.mnd }}">
                                 <div class="text-nowrap">Mind</div>
                                 <div class="d-flex align-items-center justify-content-end">
                                     <div class="d-flex justify-content-center">
-                                        <button class="stat-minus border border-secondary text-white bg-black btn-hover
+                                        <button type="button"
+                                                class="stat-min-btn border border-secondary text-white bg-black btn-hover
                                                        invisible">-</button>
                                     </div>
                                     <div class="text-center fw-bold" style="width: 3rem;">
-                                        <span>{{ character.mnd }}</span>
+                                        <span class="stat-display">{{ character.mnd }}</span>
                                     </div>
                                     <div class="d-flex justify-content-center">
-                                        <button class="stat-minus border border-secondary text-white bg-black btn-hover
+                                        <button type="button"
+                                                class="stat-add-btn border border-secondary text-white bg-black btn-hover
                                                       {% if character.stat_points %} visible
                                                       {% else %} invisible
                                                       {% endif %}">+</button>
                                     </div>
                                 </div>
+                                <input type="hidden" name="mnd_added" class="stat-input" value="0">
                             </div>
+
                         </form>
                     </div>
 
@@ -219,19 +248,63 @@
 </div>
 <script>
 document.body.addEventListener('click', function(event) {
-    const statPlus = event.target.closest('.stat-plus');
-    const statMinus = event.target.closest('.stat-minus');
+    const statPlus = event.target.closest('.stat-add-btn');
+    const statMinus = event.target.closest('.stat-min-btn');
 
-    if (statPlus) {
-        statPlus.classList.add('invisible');
-        statPlus.classList.remove('visible');
+    if (!statPlus && !statMinus) return;
+
+    const form = document.getElementById('stat-form');
+
+    let pointsRemaining = parseInt(form.getAttribute('data-stat-points'));
+    let pointsOriginal = parseInt(form.getAttribute('data-stat-orig'));
+
+    const statRow = event.target.closest('.stat-row');
+    const inputField = statRow.querySelector('.stat-input');
+    const displayVal = statRow.querySelector('.stat-display');
+    const btnMinus = statRow.querySelector('.stat-min-btn');
+
+    let baseVal = parseInt(statRow.getAttribute('data-base-val'));
+    let addedVal = parseInt(inputField.value);
+
+    if (statPlus && pointsRemaining > 0) {
+        addedVal++;
+        pointsRemaining--;
+    }
+    else if (statMinus && addedVal > 0) {
+        addedVal--;
+        pointsRemaining++;
     }
 
-    if (statMinus) {
-        statMinus.classList.add('invisible');
-        statMinus.classList.remove('visible');
+    inputField.value = addedVal;
+    displayVal.innerText = baseVal + addedVal;
+
+    if (addedVal > 0) {
+        btnMinus.classList.remove('invisible');
+        btnMinus.classList.add('visible');
+    }
+    else {
+        btnMinus.classList.remove('visible');
+        btnMinus.classList.add('invisible');
     }
 
+    form.setAttribute('data-stat-points', pointsRemaining);
+    document.getElementById('stat-points').innerText = pointsRemaining;
+
+    const allPlusBtns = form.querySelectorAll('.btn-plus');
+    const submitBtn = document.getElementById('submit-stats-btn');
+
+    if (pointsRemaining === 0) {
+        allPlusBtns.forEach(btn => { btn.classList.add('invisible'); tn.classList.remove('visible'); });
+    }
+    else if (pointsRemaining === pointsOriginal) {
+        submitBtn.classList.add('invisible');
+        submitBtn.classList.remove('visible');
+    }
+    else {
+        allPlusBtns.forEach(btn => { btn.classList.add('visible'); tn.classList.remove('invisible'); });
+        submitBtn.classList.add('visible');
+        submitBtn.classList.remove('invisible');
+    }
 });
 </script>
 
