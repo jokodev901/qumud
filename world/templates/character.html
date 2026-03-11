@@ -12,9 +12,10 @@
 
                     <div class="col-7 border-end border-secondary d-flex flex-column">
                         <form id="stat-form"
+                              autocomplete="off"
+                              onload="this.reset();"
                               hx-post=""
-                              hx-target="this"
-                              hx-swap="outerHTML"
+                              hx-target="#main-content"
                               data-stat-orig="{{ character.stat_points }}"
                               data-stat-points="{{ character.stat_points }}">
 
@@ -266,6 +267,9 @@ document.body.addEventListener('click', function(event) {
     let baseVal = parseInt(statRow.getAttribute('data-base-val'));
     let addedVal = parseInt(inputField.value);
 
+    console.log(`baseVal ${baseVal}`)
+    console.log(`addedVal ${addedVal}`)
+
     if (statPlus && pointsRemaining > 0) {
         addedVal++;
         pointsRemaining--;
@@ -274,6 +278,9 @@ document.body.addEventListener('click', function(event) {
         addedVal--;
         pointsRemaining++;
     }
+
+    console.log(`baseVal after mod ${baseVal}`)
+    console.log(`addedVal after mod ${addedVal}`)
 
     inputField.value = addedVal;
     displayVal.innerText = baseVal + addedVal;

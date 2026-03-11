@@ -243,6 +243,15 @@ class ManageCharacter(BaseView):
 
         return render(request, self.template_name, context)
 
+    def post(self, request):
+        player = self.prep_player()
+        if not player:
+            return redirect('home')
+
+        context = {"character": player}
+
+        return render(request, self.template_name, context)
+
 
 class GetPlayerCharacters(BaseView):
     template_name = 'player_characters.html'
