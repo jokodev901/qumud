@@ -219,6 +219,36 @@ class Player(Entity):
             self.xp_next_lvl = self.level**3 + 9*self.level**2
 
         self.save()
+        return self
+
+    def add_stats(self, stats):
+        if 'str' in stats and self.stat_points:
+            stat_capped = min(stats['str'], self.stat_points)
+            self.str += stat_capped
+            self.stat_points -= stat_capped
+
+        if 'dex' in stats and self.stat_points:
+            stat_capped = min(stats['dex'], self.stat_points)
+            self.dex += stat_capped
+            self.stat_points -= stat_capped
+
+        if 'int' in stats and self.stat_points:
+            stat_capped = min(stats['int'], self.stat_points)
+            self.int += stat_capped
+            self.stat_points -= stat_capped
+
+        if 'vit' in stats and self.stat_points:
+            stat_capped = min(stats['vit'], self.stat_points)
+            self.vit += stat_capped
+            self.stat_points -= stat_capped
+
+        if 'mnd' in stats and self.stat_points:
+            stat_capped = min(stats['mnd'], self.stat_points)
+            self.mnd += stat_capped
+            self.stat_points -= stat_capped
+
+        self.save()
+        return self
 
 
 class PlayerLog(BaseModel):

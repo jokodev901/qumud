@@ -163,9 +163,6 @@ def process_ticks(enemy_count: int, event_lock: Event, killed_entities: list[Any
                     for player in players:
                         player.add_xp(entity.enemy.award_xp)
 
-                    Player.objects.filter(event_id=event_lock.id, active__isnull=False).update()
-
-
                 killed_entities.append(entity)
                 event_lock.entities.remove(entity)
 
