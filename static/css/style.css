@@ -100,6 +100,13 @@
     border-color: #000;
 }
 
+/* Hover for adhoc buttons */
+.btn-hover:hover {
+    background-color: #fff !important;
+    color: #000 !important;
+    border-color: #000 !important;
+}
+
 /* HTMX "In-Flight" State: Make it look disabled/dimmed while loading */
 .htmx-request.btn-dark-outline {
     opacity: 0.6;
