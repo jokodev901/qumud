@@ -300,21 +300,9 @@ class CreateCharacter(BaseView):
         if form.is_valid():
             player = Player()
             player_class = form.cleaned_data['character_class']
-            player.name = form.cleaned_data['character_name']
+            player_name = form.cleaned_data['character_name']
 
-            player.owner = user
-            player.str = player_class.str
-            player.dex = player_class.dex
-            player.int = player_class.int
-            player.vit = player_class.vit
-            player.mnd = player_class.mnd
-
-            player.max_health = player.health = math.floor(10 + player_class.vit + (player_class.str * 0.5))
-            player.max_mana = player.mana = math.floor(10 + player_class.vit + (player_class.int * 0.5))
-            player.initiative = player_class.dex
-            player.speed = 1 + math.floor(0.025 * player_class.dex + 0.005 * player_class.str)
-
-            player.save()
+            player.initialize(user, player_class, player_name)
 
             if request.headers.get('HX-Request'):
                 location_data = {

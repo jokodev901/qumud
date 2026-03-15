@@ -178,12 +178,6 @@ class Player(Entity):
     def xp_perc(self):
         return math.floor((self.xp / self.xp_next_lvl) * 100)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # We may need to update previous relationships, so set those ids here
-        self._previous_event_id = self.event_id
-
     def __str__(self):
         return self.name
 
@@ -219,6 +213,24 @@ class Player(Entity):
             self.xp_next_lvl = self.level**3 + 9*self.level**2
 
         self.save()
+
+        return self
+    
+    def initialize(self, user: User, player_class: PlayerClass, name: str):        
+        self.name = name
+        self.owner = user
+        self.str = player_class.str
+        self.dex = player_class.dex
+        self.int = player_class.int
+        self.vit = player_class.vit
+        self.mnd = player_class.mnd
+        self.max_health = self.health = math.floor(10 + player_class.vit + (player_class.str * 0.5))
+        self.max_mana = self.mana = math.floor(10 + player_class.vit + (player_class.int * 0.5))
+        self.initiative = player_class.dex
+        self.speed = 1 + math.floor(0.025 * player_class.dex + 0.005 * player_class.str)
+
+        self.save()
+
         return self
 
     def add_stats(self, stats):
@@ -231,6 +243,8 @@ class Player(Entity):
             stat_capped = min(stats['dex'], self.stat_points)
             self.dex += stat_capped
             self.stat_points -= stat_capped
+
+            self.initiative = self.dex
 
         if 'int' in stats and self.stat_points:
             stat_capped = min(stats['int'], self.stat_points)
@@ -247,7 +261,18 @@ class Player(Entity):
             self.mnd += stat_capped
             self.stat_points -= stat_capped
 
+        hp_ratio = self.health / self.max_health
+        self.max_health = math.floor(10 + self.vit + (self.str * 0.5))
+        self.health = self.max_health * hp_ratio
+
+        mp_ratio = self.mana / self.max_mana
+        self.max_mana = self.mana = math.floor(10 + self.vit + (self.int * 0.5))
+        self.mana = self.max_mana * mp_ratio
+
+        self.speed = 1 + math.floor(0.025 * self.dex + 0.005 * self.str)
+
         self.save()
+
         return self
 
 
