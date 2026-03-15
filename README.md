@@ -15,24 +15,21 @@ QuMUD is under active development, currently aiming to stand up a simple playabl
 
 ### Current Features
 - Basic user auth
-- Placeholder character creation
+- Character creation from preset class choices
 - Can create or join existing Worlds by name
 - Worlds generate procgen starting region, town, dungeons, enemy templates
 - Can see other active players in region and chat with them
 - Combat event instance creation, matching with other players, and simulation of entity movement and damage
-
+- Players gain XP from defeated enemies and can level up via WIP stats & equipment screen
 ---
 
 ### In Progress Features
-- **Character Creation:** Implementing starting class templates
-- **Character Progression:** XP and leveling
+- **Menu overhaul:** Cleanup and standardization of navbar elements and menu flow/layout
 - **Event and Enemy Management:** Combat events with multiplayer support are currently simulated with movement and damage updates, will implement actual combat logic next
-
 ---
 
 ### What's next?
 - **True Combat:** Autobattle combat between players and enemies with realtime updates
-- **Stat system:** Character creation with stat weights, xp and leveling
 - **Loot:** Random loot drops, item and equipment management
 - **Expanded world:** Connected regions scaling by level
 - **REST API:** Game fully playable via API calls, allowing playability via third party frontends or CLI 
@@ -41,9 +38,9 @@ QuMUD is under active development, currently aiming to stand up a simple playabl
 
 ## 🛠️ Project Stack
 
-This project is being built using Django, HTMX, minimal JavaScript, and Bootstrap 5.
+This project is being built using Django, HTMX, vanilla JavaScript, and Bootstrap 5.
 
-QuMUD is intentionally simplistic and seeks to do as much as possible with simple HTTP requests and, eventually, optional REST API. 
+QuMUD is intentionally simplistic and seeks to do as much as possible with hypertext, HTTP requests and, eventually, optional REST API. 
 
 - **Backend:** [Django 6.0](https://www.djangoproject.com/)
 - **API:** [Django REST Framework](https://www.django-rest-framework.org)
