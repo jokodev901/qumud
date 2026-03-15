@@ -225,7 +225,7 @@ class Player(Entity):
         self.vit = player_class.vit
         self.mnd = player_class.mnd
         self.max_health = self.health = math.floor(10 + player_class.vit + (player_class.str * 0.5))
-        self.max_mana = self.mana = math.floor(10 + player_class.vit + (player_class.int * 0.5))
+        self.max_mana = self.mana = math.floor(10 + player_class.mnd + (player_class.int * 0.5))
         self.initiative = player_class.dex
         self.speed = 1 + math.floor(0.025 * player_class.dex + 0.005 * player_class.str)
 
@@ -266,7 +266,7 @@ class Player(Entity):
         self.health = self.max_health * hp_ratio
 
         mp_ratio = self.mana / self.max_mana
-        self.max_mana = self.mana = math.floor(10 + self.vit + (self.int * 0.5))
+        self.max_mana = self.mana = math.floor(10 + self.mnd + (self.int * 0.5))
         self.mana = self.max_mana * mp_ratio
 
         self.speed = 1 + math.floor(0.025 * self.dex + 0.005 * self.str)
