@@ -1,0 +1,13 @@
+<div id="event-footer" class="d-flex gap-2 justify-content-end flex-shrink-0 py-2 px-2"
+    {% if update %}{% if event_log_swap == "replace" %} hx-swap-oob="true" {% endif %}{% endif %}>
+    {% if travel.current_location in travel.dungeons %}
+        {% for town in travel.towns %}
+            <a class="btn btn-sm btn-dark-outline"
+               hx-swap="none"
+               hx-post='{% url "travel" %}'
+               hx-vals='{"public_id": "{{ town.public_id }}"}'>
+               Back to town ({{ town.name }})
+            </a>
+        {% endfor %}
+    {% endif %}
+</div>

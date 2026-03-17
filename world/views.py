@@ -148,8 +148,8 @@ class BaseView(View):
         return context
 
     @staticmethod
-    def get_event_data(player: Player, full: bool = False) -> tuple[dict, bool]:
-        event_data = {'log': [{'log': 'Exploring...', 'htclass': 'text-white log-entry'}], 'entities': None}
+    def get_event_data(player: Player, full: bool = False) -> tuple[dict | None, bool]:
+        event_data = None
         event = player.event
         location = player.location
         joined = False
@@ -166,8 +166,11 @@ class BaseView(View):
 
                 joined = True
 
-        if location.type == 'D' and event:
-            event_data = process_dungeon_event(player, event, full)
+        if location.type == 'D':
+            event_data = {'log': [{'log': 'Exploring...', 'htclass': 'text-white log-entry'}], 'entities': None}
+
+            if event:
+                event_data = process_dungeon_event(player, event, full)
 
         elif location.type == 'T' and event:
             event_data = process_town_event(player, event, full)
@@ -430,24 +433,24 @@ class Map(BaseView):
                 if recent_player_logs['logs']:
                     context['status'] = recent_player_logs
                     context['player_log_swap'] = 'append'
-                    partials.append('partials/player-log.html')
+                    partials.append('partials/player_log.html')
 
                 if recent_messages:
                     context['messages'] = recent_messages
-                    partials.append('partials/region-chat.html')
+                    partials.append('partials/region_chat.html')
 
                 if region_players:
                     context['region_players'] = region_players
-                    partials.append('partials/region-players.html')
+                    partials.append('partials/region_players.html')
 
                 if event_data:
                     context['event'] = event_data
                     context['event_log_swap'] = 'append'
-                    partials.append('partials/event-log.html')
+                    partials.append('partials/event_log.html')
 
                     # Joined event this update, render all SVGs
                     if event_joined:
-                        partials.append('partials/event-window.html')
+                        partials.append('partials/event_window.html')
 
                     # In existing event, update positions, remove entities no longer in event, render new svgs
                     else:
@@ -479,9 +482,25 @@ class Map(BaseView):
                 # Requery player to get updated location and last_travel
                 player = Player.objects.select_related('location__region__world', 'owner').get(id=player.id)
 
+                # Handle player changing location via game event like death/respawn
                 if player.last_travel >= player.owner.last_refresh:
                     context['travel'] = self.get_travel_data(player=player)
-                    partials.append('partials/travel.html')
+
+                    travel_partials = ['partials/status_location.html', 'partials/event_log.html',
+                                       'partials/event_window.html', 'partials/event_footer.html']
+                    partials.extend(travel_partials)
+
+                    event_header_partial = """
+                        <div id="event-card-header" hx-swap-oob="true" class="card-header d-flex justify-content-between">
+                            {% if travel.current_location.type == 'T' %}
+                                <span>In town: {{ travel.current_location }}</span>
+                            {% elif travel.current_location.type == 'D' %}
+                                <span>In dungeon: {{ travel.current_location }}</span>
+                            {% endif %}
+                        </div>
+                    """
+                    str_partials.append(event_header_partial)
+
                     # Overwrite event data since we are moving to a new location
                     context['event'] = {'log': [{'log': 'Respawned in town', 'htclass': 'text-white log-entry'}],
                                         'entities': None}
@@ -524,7 +543,8 @@ class Map(BaseView):
 
 
 class Travel(BaseView):
-    partials = ['partials/travel.html', 'partials/event-log.html', 'partials/event-window.html']
+    partials = ['partials/status_location.html', 'partials/event_log.html', 'partials/event_window.html',
+                'partials/event_footer.html']
 
     def post(self, request):
         player = self.prep_player(['location__region', 'event',])
@@ -564,11 +584,21 @@ class Travel(BaseView):
                 # Update and get event data
                 context['event'], _ = self.get_event_data(player=player, full=True)
                 context['travel'] = self.get_travel_data(player=player)
+                event_header_partial = """
+                    <div id="event-card-header" hx-swap-oob="true" class="card-header d-flex justify-content-between">
+                        {% if travel.current_location.type == 'T' %}
+                            <span>In town: {{ travel.current_location }}</span>
+                        {% elif travel.current_location.type == 'D' %}
+                            <span>In dungeon: {{ travel.current_location }}</span>
+                        {% endif %}
+                    </div>
+                """
 
                 player.owner.last_refresh = time.time()
                 player.owner.save(update_fields=['last_refresh'])
 
-                return self.render_partials(request, self.partials, [], {}, context)
+                return self.render_partials(request, self.partials, [event_header_partial], {},
+                                            context)
 
             return HttpResponse('Invalid selection', status=400)
 
@@ -576,7 +606,7 @@ class Travel(BaseView):
 
 
 class RegionChat(BaseView):
-    template = 'partials/region-chat.html'
+    template = 'partials/region_chat.html'
 
     def post(self, request):
         player = self.prep_player(['location__region', 'owner'])
