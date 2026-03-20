@@ -1,8 +1,8 @@
 {% extends base_template %}
 
 {% block content %}
-<div hx-get="{% url 'map' %}" hx-trigger="every 1s" hx-vals='{"trigger": "update"}' hx-swap="none"></div>
-<!--<button hx-get="{% url 'map' %}" hx-vals='{"trigger": "update"}' hx-swap="none">DEBUG</button>-->
+<div hx-get="{% url 'home' %}" hx-trigger="every 1s" hx-vals='{"trigger": "update"}' hx-swap="none"></div>
+<!--<button hx-get="{% url 'home' %}" hx-vals='{"trigger": "update"}' hx-swap="none">DEBUG</button>-->
 <div class="row g-3">
     <div class="col-md-8 d-flex" style="height: 700px;">
         <div id="event-card" class="card w-100 d-flex flex-column">
@@ -74,6 +74,8 @@
                 </div>
 
                 {% include 'partials/status_location.html' %}
+
+                {% include 'partials/player_stats.html' %}
 
                 <div class="scroll-window my-3 overflow-auto flex-grow-1 minheight0 border-top border-secondary">
                     {% include 'partials/player_log.html' %}

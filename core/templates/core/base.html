@@ -13,29 +13,23 @@
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
     <div class="d-flex flex-column vh-100">
-        <nav class="navbar navbar-expand-sm navbar-dark navbar-custom">
+        <nav hx-boost="true" hx-target="#main-content" class="navbar navbar-expand-sm navbar-dark navbar-custom">
             <div class="container">
-            <span class="navbar-brand">QuMUD</span>
+            <a class="navbar-brand" href="{% url 'home' %}">QuMUD</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
-                <div class="navbar-collapse collapse" id="navbar" hx-boost="true" hx-target="#main-content">
+                <div id="navbar" class="navbar-collapse collapse">
                     <ul class="nav navbar-nav me-auto">
                         {% if user.is_authenticated %}
                             <li class="nav-item">
-                                <a class="nav-link" href="{% url 'profile' %}">Profile</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{% url 'home' %}">Characters</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{% url 'character' %}">Character</a>
+                                <a class="nav-link" href="{% url 'characters' %}">Characters</a>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link" href="{% url 'world' %}">World</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="{% url 'map' %}">Map</a>
+                                <a class="nav-link" href="{% url 'items' %}">Items</a>
                             </li>
                         {% else %}
                             <li class="nav-item">

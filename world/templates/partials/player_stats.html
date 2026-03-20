@@ -1,0 +1,180 @@
+<div id="status-stats"
+     class="row flex-nowrap gx-2 gx-md-3 pt-2 border-top border-secondary"
+     {% if update %} hx-swap-oob="true" {% endif %}>
+    <div class="col-7 border-end border-secondary d-flex flex-column">
+        <form id="stat-form"
+              autocomplete="off"
+              onload="this.reset();"
+              hx-post="{% url 'stats' %}"
+              hx-target="#status-stats"
+              hx-swap="outerHTML"
+              data-stat-orig="{{ character.stat_points }}"
+              data-stat-points="{{ character.stat_points }}">
+
+            <div class="d-flex justify-content-between align-items-center border-bottom border-secondary">
+                <div class="fw-bold pb-1 mb-2 text-nowrap">
+                    Points: <span id="stat-points">{{ character.stat_points }}</span>
+                </div>
+                <button id="submit-stats-btn" type="submit"
+                        class="border border-secondary pb-1 mb-2 text-white
+                               bg-black invisible btn-hover">Submit</button>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center stat-row mb-1 mt-1"
+                 data-stat-id="str"
+                 data-base-val="{{ character.str }}">
+                <div class="text-nowrap">Strength</div>
+                <div class="d-flex align-items-center justify-content-end">
+                    <div class="d-flex justify-content-center">
+                        <button type="button"
+                                class="stat-min-btn border border-secondary text-white bg-black btn-hover
+                                       invisible">-</button>
+                    </div>
+                    <div class="text-center fw-bold" style="width: 3rem;">
+                        <span class="stat-display">{{ character.str }}</span>
+                    </div>
+                    <div class="d-flex justify-content-center">
+                        <button type="button"
+                                class="stat-add-btn border border-secondary text-white bg-black btn-hover
+                                      {% if character.stat_points %} visible
+                                      {% else %} invisible
+                                      {% endif %}">+</button>
+                    </div>
+                </div>
+                <input type="hidden" name="str_added" class="stat-input" value="0">
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-1 stat-row"
+                 data-stat-id="dex"
+                 data-base-val="{{ character.dex }}">
+                <div class="text-nowrap">Dexterity</div>
+                <div class="d-flex align-items-center justify-content-end">
+                    <div class="d-flex justify-content-center">
+                        <button type="button"
+                                class="stat-min-btn border border-secondary text-white bg-black btn-hover
+                                       invisible">-</button>
+                    </div>
+                    <div class="text-center fw-bold" style="width: 3rem;">
+                        <span class="stat-display">{{ character.dex }}</span>
+                    </div>
+                    <div class="d-flex justify-content-center">
+                        <button type="button"
+                                class="stat-add-btn border border-secondary text-white bg-black btn-hover
+                                      {% if character.stat_points %} visible
+                                      {% else %} invisible
+                                      {% endif %}">+</button>
+                    </div>
+                </div>
+                <input type="hidden" name="dex_added" class="stat-input" value="0">
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-1 stat-row"
+                 data-stat-id="int"
+                 data-base-val="{{ character.int }}">
+                <div class="text-nowrap">Intellect</div>
+                <div class="d-flex align-items-center justify-content-end">
+                    <div class="d-flex justify-content-center">
+                        <button type="button"
+                                class="stat-min-btn border border-secondary text-white bg-black btn-hover
+                                       invisible">-</button>
+                    </div>
+                    <div class="text-center fw-bold" style="width: 3rem;">
+                        <span class="stat-display">{{ character.int }}</span>
+                    </div>
+                    <div class="d-flex justify-content-center">
+                        <button type="button"
+                                class="stat-add-btn border border-secondary text-white bg-black btn-hover
+                                      {% if character.stat_points %} visible
+                                      {% else %} invisible
+                                      {% endif %}">+</button>
+                    </div>
+                </div>
+                <input type="hidden" name="int_added" class="stat-input" value="0">
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-1 stat-row"
+                 data-stat-id="vit"
+                 data-base-val="{{ character.vit }}">
+                <div class="text-nowrap">Vitality</div>
+                <div class="d-flex align-items-center justify-content-end">
+                    <div class="d-flex justify-content-center">
+                        <button type="button"
+                                class="stat-min-btn border border-secondary text-white bg-black btn-hover
+                                       invisible">-</button>
+                    </div>
+                    <div class="text-center fw-bold" style="width: 3rem;">
+                        <span class="stat-display">{{ character.vit }}</span>
+                    </div>
+                    <div class="d-flex justify-content-center">
+                        <button type="button"
+                                class="stat-add-btn border border-secondary text-white bg-black btn-hover
+                                      {% if character.stat_points %} visible
+                                      {% else %} invisible
+                                      {% endif %}">+</button>
+                    </div>
+                </div>
+                <input type="hidden" name="vit_added" class="stat-input" value="0">
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-1 stat-row"
+                 data-stat-id="mnd"
+                 data-base-val="{{ character.mnd }}">
+                <div class="text-nowrap">Mind</div>
+                <div class="d-flex align-items-center justify-content-end">
+                    <div class="d-flex justify-content-center">
+                        <button type="button"
+                                class="stat-min-btn border border-secondary text-white bg-black btn-hover
+                                       invisible">-</button>
+                    </div>
+                    <div class="text-center fw-bold" style="width: 3rem;">
+                        <span class="stat-display">{{ character.mnd }}</span>
+                    </div>
+                    <div class="d-flex justify-content-center">
+                        <button type="button"
+                                class="stat-add-btn border border-secondary text-white bg-black btn-hover
+                                      {% if character.stat_points %} visible
+                                      {% else %} invisible
+                                      {% endif %}">+</button>
+                    </div>
+                </div>
+                <input type="hidden" name="mnd_added" class="stat-input" value="0">
+            </div>
+
+        </form>
+    </div>
+
+    <div class="col-5 d-flex flex-column justify-content-around">
+
+        <div class="d-flex justify-content-between text-nowrap">
+            <div>Health</div>
+            <div>{{ character.max_health }}</div>
+        </div>
+
+        <div class="d-flex justify-content-between text-nowrap">
+            <div>Mana</div>
+            <div>{{ character.max_mana }}</div>
+        </div>
+
+        <div class="d-flex justify-content-between text-nowrap">
+            <div>Damage</div>
+            <div>{{ character.min_damage }}-{{ character.max_damage }}</div>
+        </div>
+
+        <div class="d-flex justify-content-between text-nowrap">
+            <div>Speed</div>
+            <div>{{ character.speed }}</div>
+        </div>
+
+        <div class="d-flex justify-content-between text-nowrap">
+            <div>Init</div>
+            <div>{{ character.initiative }}</div>
+        </div>
+
+        <div class="d-flex justify-content-between text-nowrap">
+            <div>Range</div>
+            <div>{{ character.attack_range }}</div>
+        </div>
+
+    </div>
+
+</div>
