@@ -1,8 +1,20 @@
 {% extends base_template %}
 
 {% block content %}
-<div hx-get="{% url 'home' %}" hx-trigger="every 1s" hx-vals='{"trigger": "update"}' hx-swap="none"></div>
-<!--<button hx-get="{% url 'home' %}" hx-vals='{"trigger": "update"}' hx-swap="none">DEBUG</button>-->
+<!--<div hx-get="{% url 'home' %}" hx-trigger="every 1s" hx-vals='{"trigger": "update"}' hx-swap="none"></div>-->
+<button hx-get="{% url 'home' %}" hx-vals='{"trigger": "update"}' hx-swap="none">DEBUG</button>
+
+<input type="radio" name="pollToggle" id="pollOn">
+<label for="pollOn">Updates on</label>
+<input type="radio" name="pollToggle" id="pollOff" checked>
+<label for="pollOff">Updates off</label>
+
+<div hx-get="{% url 'home' %}"
+     hx-trigger="every 1s [document.getElementById('pollOn').checked]"
+     hx-vals='{"trigger": "update"}'
+     hx-swap="none">
+</div>
+
 <div class="row g-3">
     <div class="col-md-8 d-flex" style="height: 700px;">
         <div id="event-card" class="card w-100 d-flex flex-column">
@@ -31,7 +43,7 @@
                     </div>
 
                     <div class="progress flex-fill mb-2 ms-1 position-relative bg-black border border-white" style="min-height: 20px;">
-                        <div id="status-mp-bar" class="progress-bar bg-info"
+                        <div id="status-mp-bar" class="progress-bar bg-primary"
                              role="progressbar"
                              style="width: {{ character_mana_perc }}%;"
                              aria-valuenow="{{ character.mana }}"
@@ -66,7 +78,7 @@
     <div class="col-md-4 d-flex" style="height: 700px;">
         <div id="status-card" class="card w-100 d-flex flex-column" hx-target="#status-card-body">
             <div class="card-header">Status</div>
-            <div id="status-card-body" class="card-body d-flex flex-column minheight0">
+            <div id="status-card-body" class="card-body d-flex flex-column overflow-hidden">
 
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <span class="fw-bold">{{ character.name }}</span>
@@ -77,7 +89,7 @@
 
                 {% include 'partials/player_stats.html' %}
 
-                <div class="scroll-window my-3 overflow-auto flex-grow-1 minheight0 border-top border-secondary">
+                <div class="scroll-window my-3 overflow-auto flex-grow-1 border-top border-secondary">
                     {% include 'partials/player_log.html' %}
                 </div>
 
@@ -86,10 +98,11 @@
     </div>
 
     <div class="col d-flex" style="height: 400px;">
-        <div id="region-chat-card" class="card w-100 d-flex flex-column" >
-            <div class="card-header">Region Chat</div>
+        <div id="region-chat-card" class="card w-100 d-flex flex-column">
+            <div class="card-header flex-shrink-0">Region Chat</div>
+
             <div id="region-chat-card-body" class="card-body p-0 d-flex flex-column overflow-hidden">
-                <div class="p-2 border-bottom border-secondary">
+                <div class="d-flex p-2 border-bottom border-secondary flex-shrink-0">
                     <form id="region-chat-form" style="display: contents;"
                           autocomplete="off"
                           hx-swap="none"
@@ -106,17 +119,18 @@
                         </div>
                     </form>
                 </div>
+
                 <div class="row g-0 flex-grow-1 overflow-hidden">
-                    <div class="col-9 flex-column h-100">
+
+                    <div class="col-9 h-100 d-flex flex-column">
                         <div class="scroll-window overflow-auto h-100">
-
                             {% include 'partials/region_chat.html' %}
-
                         </div>
                     </div>
+
                     <div class="col-3 h-100 border-start border-secondary">
-                        <div class="player-list d-flex flex-column flex-grow-1">
-                            <div class="px-2 pt-2 pb-1 small mb-1">
+                        <div class="player-list d-flex flex-column h-100">
+                            <div class="px-2 pt-2 pb-1 small mb-1 flex-shrink-0">
                                 Online Players
                             </div>
 

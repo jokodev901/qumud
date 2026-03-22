@@ -124,6 +124,7 @@ function levelStats(event) {
     inputField.value = addedVal;
     displayVal.innerText = baseVal + addedVal;
 
+    // Toggle minus buttons
     if (addedVal > 0) {
         btnMinus.classList.remove('invisible');
         btnMinus.classList.add('visible');
@@ -133,24 +134,33 @@ function levelStats(event) {
         btnMinus.classList.add('invisible');
     }
 
+    // Update remaining stat points
     form.setAttribute('data-stat-points', pointsRemaining);
     document.getElementById('stat-points').innerText = pointsRemaining;
 
     const allPlusBtns = form.querySelectorAll('.stat-add-btn');
     const submitBtn = document.getElementById('submit-stats-btn');
 
+    // Toggle plus buttons
     if (pointsRemaining === 0) {
         allPlusBtns.forEach(btn => {
             btn.classList.add('invisible');
             btn.classList.remove('visible');
         });
     }
-    else if (pointsRemaining === pointsOriginal) {
+    else {
+        allPlusBtns.forEach(btn => {
+            btn.classList.add('visible');
+            btn.classList.remove('invisible');
+        });
+    }
+
+    // Toggle submit button
+    if (pointsRemaining === pointsOriginal) {
         submitBtn.classList.add('invisible');
         submitBtn.classList.remove('visible');
     }
     else {
-        allPlusBtns.forEach(btn => { btn.classList.add('visible'); btn.classList.remove('invisible'); });
         submitBtn.classList.add('visible');
         submitBtn.classList.remove('invisible');
     }

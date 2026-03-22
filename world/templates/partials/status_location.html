@@ -1,4 +1,4 @@
-<div id="status-location" {% if update%} hx-swap-oob="true" {% endif %}>
+<div id="status-location" class="d-flex flex-column" {% if update%} hx-swap-oob="true" {% endif %}>
   <div class="small fw-bold">World: <span class="fw-light">{{ travel.world }}</span></div>
   <div class="small fw-bold">Region: <span class="fw-light">{{ travel.region }} ({{ travel.region.get_biome_display }})</span></div>
   <div class="small fw-bold mb-4">Current Location: <span class="fw-light">{{ travel.current_location }}</span></div>
