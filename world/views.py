@@ -18,7 +18,7 @@ from rest_framework.authtoken.models import Token
 
 from core.utils import generators
 from authentication.models import User
-from .models import (World, Region, Location, RegionChatMessage, Player, EnemyTemplate, PlayerLog, PlayerClass)
+from .models import (World, Region, Location, RegionChatMessage, Player, PlayerLog, PlayerClass)
 from .forms import CharacterCreateForm, WorldCreationForm
 from .event import process_dungeon_event, process_town_event, get_or_create_event
 from .enemy import generate_enemy_templates
@@ -97,12 +97,11 @@ class BaseView(View):
 
         return classes
 
-
     @staticmethod
     def get_region_messages(player: Player, count: int = 50, full: bool = False):
         messages = (RegionChatMessage.objects.all()
                     .select_related('user')
-                    .filter(region=player.location.region, created_at__gte=time.time()-600)
+                    .filter(region=player.location.region, created_at__gte=time.time() - 600)
                     .order_by('-created_at'))[:count]
 
         if messages:
@@ -451,8 +450,6 @@ class Map(BaseView):
             region_players = self.get_region_players(region=player.location.region)
             event_data, event_joined = self.get_event_data(player=player)
 
-
-
             if recent_player_logs['logs']:
                 context['status'] = recent_player_logs
                 context['player_log_swap'] = 'append'
@@ -506,16 +503,18 @@ class Map(BaseView):
             player = Player.objects.select_related('location__region__world', 'owner').get(id=player.id)
 
             context['character'] = player
-            trigger_data['updateStatus'] = {'hp_perc': player.health_perc,
-                                            'hp_curr': player.health,
-                                            'hp_max': player.max_health,
-                                            'mp_perc': player.mana_perc,
-                                            'mp_curr': player.mana,
-                                            'mp_max': player.max_mana,
-                                            'xp_perc': player.xp_perc,
-                                            'xp_curr': player.xp,
-                                            'xp_max': player.xp_next_lvl,
-                                            'lvl': player.level}
+            trigger_data['updateStatus'] = {
+                'hp_perc': player.health_perc,
+                'hp_curr': player.health,
+                'hp_max': player.max_health,
+                'mp_perc': player.mana_perc,
+                'mp_curr': player.mana,
+                'mp_max': player.max_mana,
+                'xp_perc': player.xp_perc,
+                'xp_curr': player.xp,
+                'xp_max': player.xp_next_lvl,
+                'lvl': player.level
+            }
 
             if player.last_stat_update >= player.owner.last_refresh:
                 partials.append('partials/player_stats.html')
@@ -524,8 +523,13 @@ class Map(BaseView):
             if player.last_travel >= player.owner.last_refresh:
                 context['travel'] = self.get_travel_data(player=player)
 
-                travel_partials = ['partials/status_location.html', 'partials/event_log.html',
-                                   'partials/event_window.html', 'partials/event_footer.html']
+                travel_partials = [
+                    'partials/status_location.html',
+                    'partials/event_log.html',
+                    'partials/event_window.html',
+                    'partials/event_footer.html'
+                ]
+
                 partials.extend(travel_partials)
 
                 event_header_partial = """
@@ -655,7 +659,7 @@ class RegionChat(BaseView):
         if not player:
             return redirect('characters')
 
-        context = {}
+        context = {'update': True}
         region = player.location.region
 
         msg = request.POST.get('region-chat-msg', '')

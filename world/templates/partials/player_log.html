@@ -1,7 +1,7 @@
 <div id="player-log-swap"
      {% if update %}
-       {% if player_log_swap == "replace" %}hx-swap-oob="true"{% endif %}
-       {% if player_log_swap == "append" %}hx-swap-oob="afterbegin"{% endif %}
+       {% if player_log_swap == "replace" %}hx-swap-oob="true"
+       {% elif player_log_swap == "append" %}hx-swap-oob="afterbegin"{% endif %}
      {% endif %}>
   {% for log in status.logs %}
   <div class="{{ log.htclass }}">{{ log.log }}</div>

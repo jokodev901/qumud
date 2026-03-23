@@ -12,7 +12,7 @@
     <script src="{% static 'js/app.js' %}" defer></script>
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-    <div class="d-flex flex-column vh-100">
+    <div class="d-flex flex-column vh-100 vw-100">
         <nav hx-boost="true" hx-target="#main-content" class="navbar navbar-expand-sm navbar-dark navbar-custom">
             <div class="container">
             <a class="navbar-brand" href="{% url 'home' %}">QuMUD</a>
@@ -48,7 +48,7 @@
                 </div>
             </div>
         </nav>
-        <main id="main-content" role="main" class="container py-3 h-100">
+        <main id="main-content" role="main" class="container py-3 h-100 w-100">
             {% block content %}{% endblock %}
         </main>
     </div>
