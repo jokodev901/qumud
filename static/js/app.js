@@ -127,10 +127,8 @@ function levelStats(event) {
     // Toggle minus buttons
     if (addedVal > 0) {
         btnMinus.classList.remove('invisible');
-        btnMinus.classList.add('visible');
     }
     else {
-        btnMinus.classList.remove('visible');
         btnMinus.classList.add('invisible');
     }
 
@@ -145,12 +143,10 @@ function levelStats(event) {
     if (pointsRemaining === 0) {
         allPlusBtns.forEach(btn => {
             btn.classList.add('invisible');
-            btn.classList.remove('visible');
         });
     }
     else {
         allPlusBtns.forEach(btn => {
-            btn.classList.add('visible');
             btn.classList.remove('invisible');
         });
     }
@@ -158,10 +154,8 @@ function levelStats(event) {
     // Toggle submit button
     if (pointsRemaining === pointsOriginal) {
         submitBtn.classList.add('invisible');
-        submitBtn.classList.remove('visible');
     }
     else {
-        submitBtn.classList.add('visible');
         submitBtn.classList.remove('invisible');
     }
 }

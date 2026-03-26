@@ -4,9 +4,9 @@
 <!--<div hx-get="{% url 'home' %}" hx-trigger="every 1s" hx-vals='{"trigger": "update"}' hx-swap="none"></div>-->
 <button hx-get="{% url 'home' %}" hx-vals='{"trigger": "update"}' hx-swap="none">DEBUG</button>
 
-<input type="radio" name="pollToggle" id="pollOn">
+<input type="radio" name="pollToggle" id="pollOn" checked>
 <label for="pollOn">Updates on</label>
-<input type="radio" name="pollToggle" id="pollOff" checked>
+<input type="radio" name="pollToggle" id="pollOff">
 <label for="pollOff">Updates off</label>
 
 <div hx-get="{% url 'home' %}"
