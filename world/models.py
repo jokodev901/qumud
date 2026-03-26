@@ -145,10 +145,6 @@ class Entity(BaseModel):
     def __str__(self):
         return self.name
 
-    def delete(self, *args, **kwargs):
-        Enemy.objects.filter(event=self).delete()
-        super().delete(*args, **kwargs)
-
 
 class PlayerClass(models.Model):
     name = models.CharField('Class name')

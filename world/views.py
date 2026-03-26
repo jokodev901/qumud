@@ -196,43 +196,6 @@ class UserProfileView(LoginRequiredMixin, TemplateView):
         return redirect('profile')
 
 
-class SelectCharacter(BaseView):
-    def post(self, request):
-        user = self.prep_user()
-        if not user:
-            return redirect('login')
-
-        selected = request.POST.get('selected_id')
-        character = Player.objects.select_related('owner').only('owner__id').get(public_id=selected)
-
-        if character:
-            if character.owner == user:
-                with transaction.atomic():
-                    try:
-                        current_char = Player.objects.get(active=user)
-                    except Player.DoesNotExist:
-                        current_char = None
-
-                    if current_char:
-                        current_char.active = None
-                        current_char.save(update_fields=['active'])
-
-                    character.active = user
-                    character.save(update_fields=['active'])
-
-                if request.headers.get('HX-Request'):
-                    location_data = {
-                        "path": reverse('world'),
-                        "target": "#main-content",
-                        "swap": "innerHTML"
-                    }
-                    response = HttpResponse(status=204)
-                    response['HX-Location'] = json.dumps(location_data)
-                    return response
-
-        return HttpResponse('Invalid selection', status=400)
-
-
 class Stats(BaseView):
     template_name = 'partials/player_stats.html'
 
@@ -302,6 +265,41 @@ class GetPlayerCharacters(BaseView):
         context = {'characters': characters}
 
         return render(request, self.template_name, context)
+
+
+class SelectCharacter(BaseView):
+    def post(self, request):
+        user = self.prep_user()
+        if not user:
+            return redirect('login')
+
+        delete = request.POST.get('delete')
+        selected = request.POST.get('selected_id')
+        path = reverse('world')
+
+        if delete:
+            del_count, _ = Player.objects.filter(owner_id=user.id, public_id=selected).delete()
+            path = reverse('characters')
+
+        else:
+            with transaction.atomic():
+                Player.objects.filter(active_id=user.id).update(active=None)
+                update_count = Player.objects.filter(owner_id=user.id, public_id=selected).update(active=user)
+
+                if update_count == 0:
+                    return redirect('characters')
+
+        if request.headers.get('HX-Request'):
+            location_data = {
+                "path": path,
+                "target": "#main-content",
+                "swap": "innerHTML"
+            }
+            response = HttpResponse(status=204)
+            response['HX-Location'] = json.dumps(location_data)
+            return response
+
+        return redirect('characters')
 
 
 class CreateCharacter(BaseView):
