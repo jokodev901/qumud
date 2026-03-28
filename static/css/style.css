@@ -1,5 +1,7 @@
 /* Text shadow for status bar text */
-.text-shadow { text-shadow: 2px 2px 2px #000; }
+.text-shadow {
+    text-shadow: 1px 1px 0px black;
+}
 
 /* Conditional overrides */
 .no-transition {
@@ -35,10 +37,6 @@
     font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 1px;
-}
-
-.minheight0 {
-    min-height: 0px !important;
 }
 
 /* Chat and Log Windows */
@@ -122,8 +120,12 @@
 
 .no-outline:focus {
     outline: none;
-    border: none;
-    border-bottom: 1px solid #fff;
+    border: 1px solid #fff !important;
+}
+
+.no-outline-bottom:focus {
+    outline: none;
+    border-bottom: 1px solid #fff !important;
 }
 
 /* Radio style */

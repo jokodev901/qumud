@@ -1,7 +1,6 @@
 import json
 import time
 import re
-import math
 
 from django.db.models import QuerySet
 from django.views.generic import TemplateView, View
@@ -18,7 +17,7 @@ from rest_framework.authtoken.models import Token
 
 from core.utils import generators
 from authentication.models import User
-from .models import (World, Region, Location, RegionChatMessage, Player, EnemyTemplate, PlayerLog, PlayerClass)
+from .models import (World, Region, Location, RegionChatMessage, Player, PlayerLog, PlayerClass, Event)
 from .forms import CharacterCreateForm, WorldCreationForm
 from .event import process_dungeon_event, process_town_event, get_or_create_event
 from .enemy import generate_enemy_templates
@@ -44,7 +43,7 @@ class BaseView(View):
 
         return user
 
-    def prep_player(self, related: list = ()) -> Player | None:
+    def prep_player(self, related: list = ()) -> tuple[Player | None, bool]:
         '''
         Avoids duplicate user queries each time authentication is checked and prepares related data
         '''
@@ -53,7 +52,7 @@ class BaseView(View):
         user_id = self.request.session.get('_auth_user_id')
 
         if not user_id:
-            return None
+            return None, False
 
         try:
             player = (
@@ -62,9 +61,9 @@ class BaseView(View):
                 .get(active_id=user_id)
             )
         except Player.DoesNotExist:
-            return None
+            return None, True
 
-        return player
+        return player, True
 
     @staticmethod
     def render_partials(request, partials, str_partials, headers, context):
@@ -97,12 +96,11 @@ class BaseView(View):
 
         return classes
 
-
     @staticmethod
     def get_region_messages(player: Player, count: int = 50, full: bool = False):
         messages = (RegionChatMessage.objects.all()
                     .select_related('user')
-                    .filter(region=player.location.region, created_at__gte=time.time()-600)
+                    .filter(region=player.location.region, created_at__gte=time.time() - 600)
                     .order_by('-created_at'))[:count]
 
         if messages:
@@ -148,8 +146,8 @@ class BaseView(View):
         return context
 
     @staticmethod
-    def get_event_data(player: Player, full: bool = False) -> tuple[dict, bool]:
-        event_data = {'log': [{'log': 'Exploring...', 'htclass': 'text-white log-entry'}], 'entities': None}
+    def get_event_data(player: Player, full: bool = False) -> tuple[dict | None, bool]:
+        event_data = None
         event = player.event
         location = player.location
         joined = False
@@ -166,11 +164,14 @@ class BaseView(View):
 
                 joined = True
 
-        if location.type == 'D' and event:
-            event_data = process_dungeon_event(player, event, full)
+        if location.type == 'D':
+            event_data = {'log': [{'log': 'Exploring...', 'htclass': 'text-white log-entry'}], 'entities': None}
+
+            if event:
+                event_data = process_dungeon_event(player, event, full)
 
         elif location.type == 'T' and event:
-            event_data = process_town_event(player, event, full)
+            event_data = process_town_event(player, event, full, joined)
 
         return event_data, joined
 
@@ -194,59 +195,30 @@ class UserProfileView(LoginRequiredMixin, TemplateView):
         return redirect('profile')
 
 
-class SelectCharacter(BaseView):
-    def post(self, request):
-        user = self.prep_user()
-        if not user:
-            return redirect('login')
-
-        selected = request.POST.get('selected_id')
-        character = Player.objects.select_related('owner').only('owner__id').get(public_id=selected)
-
-        if character:
-            if character.owner == user:
-                with transaction.atomic():
-                    try:
-                        current_char = Player.objects.get(active=user)
-                    except Player.DoesNotExist:
-                        current_char = None
-
-                    if current_char:
-                        current_char.active = None
-                        current_char.save(update_fields=['active'])
-
-                    character.active = user
-                    character.save(update_fields=['active'])
-
-                if request.headers.get('HX-Request'):
-                    location_data = {
-                        "path": reverse('world'),
-                        "target": "#main-content",
-                        "swap": "innerHTML"
-                    }
-                    response = HttpResponse(status=204)
-                    response['HX-Location'] = json.dumps(location_data)
-                    return response
-
-        return HttpResponse('Invalid selection', status=400)
-
-
-class ManageCharacter(BaseView):
-    template_name = 'character.html'
+class Stats(BaseView):
+    template_name = 'partials/player_stats.html'
 
     def get(self, request):
-        player = self.prep_player()
+        player, user_auth = self.prep_player()
+
+        if not user_auth:
+            return redirect('login')
+
         if not player:
-            return redirect('home')
+            return redirect('characters')
 
         context = {"character": player}
 
         return render(request, self.template_name, context)
 
     def post(self, request):
-        player = self.prep_player()
+        player, user_auth = self.prep_player()
+
+        if not user_auth:
+            return redirect('login')
+
         if not player:
-            return redirect('home')
+            return redirect('characters')
 
         str_add = request.POST.get('str_added')
         dex_add = request.POST.get('dex_added')
@@ -263,6 +235,23 @@ class ManageCharacter(BaseView):
         return render(request, self.template_name, context)
 
 
+class Items(BaseView):
+    template_name = 'items.html'
+
+    def get(self, request):
+        player, user_auth = self.prep_player()
+
+        if not user_auth:
+            return redirect('login')
+
+        if not player:
+            return redirect('characters')
+
+        context = {}
+
+        return render(request, self.template_name, context)
+
+
 class GetPlayerCharacters(BaseView):
     template_name = 'player_characters.html'
 
@@ -275,6 +264,41 @@ class GetPlayerCharacters(BaseView):
         context = {'characters': characters}
 
         return render(request, self.template_name, context)
+
+
+class SelectCharacter(BaseView):
+    def post(self, request):
+        user = self.prep_user()
+        if not user:
+            return redirect('login')
+
+        delete = request.POST.get('delete')
+        selected = request.POST.get('selected_id')
+        path = reverse('world')
+
+        if delete:
+            del_count, _ = Player.objects.filter(owner_id=user.id, public_id=selected).delete()
+            path = reverse('characters')
+
+        else:
+            with transaction.atomic():
+                Player.objects.filter(active_id=user.id).update(active=None, event=None, event_joined=0)
+                update_count = Player.objects.filter(owner_id=user.id, public_id=selected).update(active=user)
+
+                if update_count == 0:
+                    return redirect('characters')
+
+        if request.headers.get('HX-Request'):
+            location_data = {
+                "path": path,
+                "target": "#main-content",
+                "swap": "innerHTML"
+            }
+            response = HttpResponse(status=204)
+            response['HX-Location'] = json.dumps(location_data)
+            return response
+
+        return redirect('characters')
 
 
 class CreateCharacter(BaseView):
@@ -306,7 +330,7 @@ class CreateCharacter(BaseView):
 
             if request.headers.get('HX-Request'):
                 location_data = {
-                    "path": reverse('home'),
+                    "path": reverse('characters'),
                     "target": "#main-content",
                     "swap": "innerHTML"
                 }
@@ -315,7 +339,7 @@ class CreateCharacter(BaseView):
                 response['HX-Location'] = json.dumps(location_data)
                 return response
 
-            return redirect('home')
+            return redirect('characters')
 
         classes = self.get_player_classes()
         return render(request, self.template_name, {'form': form, 'classes': classes})
@@ -325,10 +349,13 @@ class SelectWorld(BaseView):
     template_name = 'world.html'
 
     def get(self, request):
-        player = self.prep_player(['location__region__world'])
+        player, user_auth = self.prep_player(['location__region__world'])
+
+        if not user_auth:
+            return redirect('login')
 
         if not player:
-            return redirect('home')
+            return redirect('characters')
 
         form = WorldCreationForm()
         world_name = None
@@ -339,9 +366,13 @@ class SelectWorld(BaseView):
         return render(request, self.template_name, {'world': world_name, 'form': form})
 
     def post(self, request):
-        player = self.prep_player(['location'])
-        if not player:
+        player, user_auth = self.prep_player(['location'])
+
+        if not user_auth:
             return redirect('login')
+
+        if not player:
+            return redirect('characters')
 
         form = WorldCreationForm(request.POST)
 
@@ -379,7 +410,7 @@ class SelectWorld(BaseView):
                 response = HttpResponse(status=204)
 
                 location_data = {
-                    "path": reverse('map'),
+                    "path": reverse('home'),
                     "target": "#main-content",
                     "swap": "innerHTML"
                 }
@@ -394,143 +425,171 @@ class Map(BaseView):
     template_name = 'map.html'
 
     def get(self, request):
-        player = self.prep_player(['location__region__world', 'event', 'owner'])
+        player, user_auth = self.prep_player(['location__region__world', 'event', 'owner'])
+
+        if not user_auth:
+            return redirect('login')
 
         if not player:
-            return redirect('login')
+            return redirect('characters')
 
         context = {}
 
-        try:
-            # Render partials (update trigger)
-            if request.GET.get('trigger', None) == 'update':
-                context = {'update': True}
-                partials = []
-                str_partials = []
-                headers = {}
-                trigger_data = {}
-                recent_messages = self.get_region_messages(player=player)
-                recent_player_logs = self.get_player_logs(player=player)
-                region_players = self.get_region_players(region=player.location.region)
-                event_data, event_joined = self.get_event_data(player=player)
+        # Render partials (update trigger)
+        if request.GET.get('trigger', None) == 'update':
+            context = {'update': True}
+            partials = []
+            str_partials = []
+            headers = {}
+            trigger_data = {}
+            recent_messages = self.get_region_messages(player=player)
+            recent_player_logs = self.get_player_logs(player=player)
+            region_players = self.get_region_players(region=player.location.region)
+            event_data, event_joined = self.get_event_data(player=player)
 
-                context['character'] = player
+            if recent_player_logs['logs']:
+                context['status'] = recent_player_logs
+                context['player_log_swap'] = 'append'
+                partials.append('partials/player_log.html')
 
-                trigger_data['updateStatus'] = {'hp_perc': player.health_perc,
-                                                'hp_curr': player.health,
-                                                'hp_max': player.max_health,
-                                                'mp_perc': player.mana_perc,
-                                                'mp_curr': player.mana,
-                                                'mp_max': player.max_mana,
-                                                'xp_perc': player.xp_perc,
-                                                'xp_curr': player.xp,
-                                                'xp_max': player.xp_next_lvl,
-                                                'lvl': player.level}
-
-                if recent_player_logs['logs']:
-                    context['status'] = recent_player_logs
-                    context['player_log_swap'] = 'append'
-                    partials.append('partials/player-log.html')
-
-                if recent_messages:
-                    context['messages'] = recent_messages
-                    partials.append('partials/region-chat.html')
-
-                if region_players:
-                    context['region_players'] = region_players
-                    partials.append('partials/region-players.html')
-
-                if event_data:
-                    context['event'] = event_data
-                    context['event_log_swap'] = 'append'
-                    partials.append('partials/event-log.html')
-
-                    # Joined event this update, render all SVGs
-                    if event_joined:
-                        partials.append('partials/event-window.html')
-
-                    # In existing event, update positions, remove entities no longer in event, render new svgs
-                    else:
-                        living_svgs = []
-
-                        if event_data['entities']:
-                            move_data = {'moveIds': [{'id': f'svg-{entity.public_id}',
-                                                      'top': int(entity.top),
-                                                      'left': int(entity.left)}
-                                                    for entity in event_data['entities']]}
-                            trigger_data['triggerMove'] = move_data
-                            new_svgs = [entity.render_svg for entity in event_data['entities']
-                                        if entity.event_joined >= player.owner.last_refresh]
-
-                            if new_svgs:
-                                svg_partial = f"""
-                                     <div id="event-window-swap"                                              
-                                          hx-swap-oob="afterbegin">
-                                          {''.join(new_svgs)}
-                                     </div>
-                                """
-                                str_partials.append(svg_partial)
-
-                            living_svgs = {'activeIds':
-                                               [f"svg-{entity.public_id}" for entity in event_data['entities']]}
-
-                        trigger_data['triggerDefeatAnimation'] = living_svgs
-
-                # Requery player to get updated location and last_travel
-                player = Player.objects.select_related('location__region__world', 'owner').get(id=player.id)
-
-                if player.last_travel >= player.owner.last_refresh:
-                    context['travel'] = self.get_travel_data(player=player)
-                    partials.append('partials/travel.html')
-                    # Overwrite event data since we are moving to a new location
-                    context['event'] = {'log': [{'log': 'Respawned in town', 'htclass': 'text-white log-entry'}],
-                                        'entities': None}
-                    context['event_log_swap'] = 'replace'
-
-                player.owner.last_refresh = time.time()
-                player.owner.save(update_fields=['last_refresh'])
-
-                headers['HX-Trigger'] = json.dumps(trigger_data)
-
-                if partials:
-                    return self.render_partials(request, partials, str_partials, headers, context)
-
-                return HttpResponse(status=204, headers=headers)
-
-            # Render full template ( initial load )
-            else:
-                recent_messages = self.get_region_messages(player=player, full=True)
-                region_players = self.get_region_players(region=player.location.region)
-                context['status'] = self.get_player_logs(player=player, full=True)
-                context['player_log_swap'] = 'replace'
-                context['travel'] = self.get_travel_data(player=player)
-                context['event'], _ = self.get_event_data(player=player, full=True)
-                context['event_log_swap'] = 'replace'
-                context['region_players'] = region_players
+            if recent_messages:
                 context['messages'] = recent_messages
-                context['character'] = player
-                context['character_health_perc'] = player.health_perc
-                context['character_mana_perc'] = player.mana_perc
-                context['character_xp_perc'] = player.xp_perc
-                context['xp_curr'] = player.xp
+                partials.append('partials/region_chat.html')
 
-                player.owner.last_refresh = time.time()
-                player.owner.save(update_fields=['last_refresh'])
+            if region_players:
+                context['region_players'] = region_players
+                partials.append('partials/region_players.html')
 
-                return render(request, self.template_name, context)
+            if event_data:
+                context['event'] = event_data
+                context['event_log_swap'] = 'append'
+                partials.append('partials/event_log.html')
 
-        except SyntaxError:
-            return redirect('home')
+                # Joined event this update, render all SVGs
+                if event_joined:
+                    partials.append('partials/event_window.html')
+
+                # In existing event, update positions, remove entities no longer in event, render new svgs
+                else:
+                    living_svgs = []
+
+                    if event_data['entities']:
+                        move_data = {'moveIds': [{'id': f'svg-{entity.public_id}',
+                                                  'top': int(entity.top),
+                                                  'left': int(entity.left)}
+                                                for entity in event_data['entities']]}
+                        trigger_data['triggerMove'] = move_data
+                        new_svgs = [entity.render_svg for entity in event_data['entities']
+                                    if entity.event_joined >= player.owner.last_refresh]
+
+                        if new_svgs:
+                            svg_partial = f"""
+                                 <div id="event-window-swap"                                              
+                                      hx-swap-oob="afterbegin">
+                                      {''.join(new_svgs)}
+                                 </div>
+                            """
+                            str_partials.append(svg_partial)
+
+                        living_svgs = {'activeIds':
+                                           [f"svg-{entity.public_id}" for entity in event_data['entities']]}
+
+                    trigger_data['triggerDefeatAnimation'] = living_svgs
+
+            # Requery player to get updated location and last_travel
+            player = Player.objects.select_related('location__region__world', 'owner').get(id=player.id)
+
+            context['character'] = player
+            trigger_data['updateStatus'] = {
+                'hp_perc': player.health_perc,
+                'hp_curr': player.health,
+                'hp_max': player.max_health,
+                'mp_perc': player.mana_perc,
+                'mp_curr': player.mana,
+                'mp_max': player.max_mana,
+                'xp_perc': player.xp_perc,
+                'xp_curr': player.xp,
+                'xp_max': player.xp_next_lvl,
+                'lvl': player.level
+            }
+
+            if player.last_stat_update >= player.owner.last_refresh:
+                partials.append('partials/player_stats.html')
+
+            # Handle player changing location via game event like death/respawn
+            if player.last_travel >= player.owner.last_refresh:
+                context['travel'] = self.get_travel_data(player=player)
+
+                travel_partials = [
+                    'partials/status_location.html',
+                    'partials/event_log.html',
+                    'partials/event_window.html',
+                    'partials/event_footer.html'
+                ]
+
+                partials.extend(travel_partials)
+
+                event_header_partial = """
+                    <div id="event-card-header" hx-swap-oob="true" class="card-header d-flex justify-content-between">
+                        {% if travel.current_location.type == 'T' %}
+                            <span>In town: {{ travel.current_location }}</span>
+                        {% elif travel.current_location.type == 'D' %}
+                            <span>In dungeon: {{ travel.current_location }}</span>
+                        {% endif %}
+                    </div>
+                """
+                str_partials.append(event_header_partial)
+
+                # Overwrite event data since we are moving to a new location
+                context['event'] = {'log': [{'log': 'Respawned in town', 'htclass': 'text-white log-entry'}],
+                                    'entities': None}
+                context['event_log_swap'] = 'replace'
+
+            player.owner.last_refresh = time.time()
+            player.owner.save(update_fields=['last_refresh'])
+
+            headers['HX-Trigger'] = json.dumps(trigger_data)
+
+            if partials:
+                return self.render_partials(request, partials, str_partials, headers, context)
+
+            return HttpResponse(status=204, headers=headers)
+
+        # Render full template ( initial load )
+        else:
+            recent_messages = self.get_region_messages(player=player, full=True)
+            region_players = self.get_region_players(region=player.location.region)
+            context['status'] = self.get_player_logs(player=player, full=True)
+            context['player_log_swap'] = 'replace'
+            context['travel'] = self.get_travel_data(player=player)
+            context['event'], _ = self.get_event_data(player=player, full=True)
+            context['event_log_swap'] = 'replace'
+            context['region_players'] = region_players
+            context['messages'] = recent_messages
+            context['character'] = player
+            context['character_health_perc'] = player.health_perc
+            context['character_mana_perc'] = player.mana_perc
+            context['character_xp_perc'] = player.xp_perc
+            context['xp_curr'] = player.xp
+
+            player.owner.last_refresh = time.time()
+            player.owner.save(update_fields=['last_refresh'])
+
+            return render(request, self.template_name, context)
 
 
 class Travel(BaseView):
-    partials = ['partials/travel.html', 'partials/event-log.html', 'partials/event-window.html']
+    partials = ['partials/status_location.html', 'partials/event_log.html', 'partials/event_window.html',
+                'partials/event_footer.html']
 
     def post(self, request):
-        player = self.prep_player(['location__region', 'event',])
+        player, user_auth = self.prep_player(['location__region', 'event',])
+
+        if not user_auth:
+            return redirect('login')
 
         if not player:
-            return redirect('login')
+            return redirect('characters')
 
         context = {'update': True, 'event_log_swap': 'replace'}
         update_fields = []
@@ -545,8 +604,7 @@ class Travel(BaseView):
                         # If we are the last player to leave an event, then set it to inactive
                         event_players = player.event.entity_set.all().filter(type='P').exclude(pk=player.id)
                         if not event_players:
-                            player.event.active = False
-                            player.event.save(update_fields=["active", ])
+                            Event.objects.all().filter(id=player.event_id).update(active=False)
 
                         player.event = None
                         player.event_joined = time.time()
@@ -564,11 +622,21 @@ class Travel(BaseView):
                 # Update and get event data
                 context['event'], _ = self.get_event_data(player=player, full=True)
                 context['travel'] = self.get_travel_data(player=player)
+                event_header_partial = """
+                    <div id="event-card-header" hx-swap-oob="true" class="card-header d-flex justify-content-between">
+                        {% if travel.current_location.type == 'T' %}
+                            <span>In town: {{ travel.current_location }}</span>
+                        {% elif travel.current_location.type == 'D' %}
+                            <span>In dungeon: {{ travel.current_location }}</span>
+                        {% endif %}
+                    </div>
+                """
 
                 player.owner.last_refresh = time.time()
                 player.owner.save(update_fields=['last_refresh'])
 
-                return self.render_partials(request, self.partials, [], {}, context)
+                return self.render_partials(request, self.partials, [event_header_partial], {},
+                                            context)
 
             return HttpResponse('Invalid selection', status=400)
 
@@ -576,14 +644,18 @@ class Travel(BaseView):
 
 
 class RegionChat(BaseView):
-    template = 'partials/region-chat.html'
+    template = 'partials/region_chat.html'
 
     def post(self, request):
-        player = self.prep_player(['location__region', 'owner'])
-        if not player:
+        player, user_auth = self.prep_player(['location__region', 'owner'])
+
+        if not user_auth:
             return redirect('login')
 
-        context = {}
+        if not player:
+            return redirect('characters')
+
+        context = {'update': True}
         region = player.location.region
 
         msg = request.POST.get('region-chat-msg', '')

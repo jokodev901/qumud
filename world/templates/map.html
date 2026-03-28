@@ -1,39 +1,118 @@
 {% extends base_template %}
 
 {% block content %}
-<div hx-get="{% url 'map' %}" hx-trigger="every 1s" hx-vals='{"trigger": "update"}' hx-swap="none"></div>
-<button hx-get="{% url 'map' %}" hx-vals='{"trigger": "update"}' hx-swap="none">DEBUG</button>
-<div class="row g-3 d-flex">
-    <div class="col-md-7 col-lg-8 order-1 d-flex" style="height: 600px;">
+<!--<div hx-get="{% url 'home' %}" hx-trigger="every 1s" hx-vals='{"trigger": "update"}' hx-swap="none"></div>-->
+
+<div id="debug" class="ad-none">
+    <button hx-get="{% url 'home' %}" hx-vals='{"trigger": "update"}' hx-swap="none">UPDATE</button>
+
+    <input type="radio" name="pollToggle" id="pollOn">
+    <label for="pollOn">Updates on</label>
+    <input type="radio" name="pollToggle" id="pollOff" checked>
+    <label for="pollOff">Updates off</label>
+
+    <div hx-get="{% url 'home' %}"
+         hx-trigger="every 1s [document.getElementById('pollOn').checked]"
+         hx-vals='{"trigger": "update"}'
+         hx-swap="none">
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-xl-8 d-flex" style="height: 700px;">
         <div id="event-card" class="card w-100 d-flex flex-column">
-            <div class="card-header d-flex justify-content-between">
-                <span>Event</span>
+
+            <div id="event-card-header" class="card-header d-flex justify-content-between">
+                {% if travel.current_location.type == 'T' %}
+                    <span>In town: {{ travel.current_location }}</span>
+                {% elif travel.current_location.type == 'D' %}
+                    <span>In dungeon: {{ travel.current_location }}</span>
+                {% endif %}
             </div>
-            <div id="event-card-body" class="card-body d-flex flex-column minheight0">
 
-                {% include 'partials/event-window.html' %}
-                {% include 'partials/event-log.html' %}
+            <div id="event-card-body" class="card-body d-flex flex-column overflow-hidden">
+                {% include 'partials/event_window.html' %}
 
-                <div class="d-flex gap-2 justify-content-end mt-auto flex-shrink-0">
-                    <button class="btn btn-sm btn-dark-outline px-4">Flee</button>
-                    <button class="btn btn-sm btn-dark-outline px-4">Loot Item</button>
+                <div class="d-flex">
+                    <div class="progress flex-fill mb-2 me-1 position-relative bg-black border border-white" style="min-height: 20px;">
+                        <div id="status-hp-bar" class="progress-bar bg-danger"
+                             role="progressbar"
+                             style="width: {{ character_health_perc }}%;"
+                             aria-valuenow="{{ character.health }}"
+                             aria-valuemin="0"
+                             aria-valuemax="{{ character.max_health }}"></div>
+                        <span id="status-hp-text" class="justify-content-center d-flex position-absolute w-100 text-white text-shadow">
+                            {{ character.health }} / {{ character.max_health }} HP</span>
+                    </div>
+
+                    <div class="progress flex-fill mb-2 ms-1 position-relative bg-black border border-white" style="min-height: 20px;">
+                        <div id="status-mp-bar" class="progress-bar bg-primary"
+                             role="progressbar"
+                             style="width: {{ character_mana_perc }}%;"
+                             aria-valuenow="{{ character.mana }}"
+                             aria-valuemin="0"
+                             aria-valuemax="{{ character.max_mana }}"></div>
+                        <span id="status-mp-text" class="justify-content-center d-flex position-absolute w-100 text-white text-shadow">
+                            {{ character.mana }} / {{ character.max_mana }} MP</span>
+                    </div>
                 </div>
+
+                <div class="d-flex">
+                    <div class="progress flex-fill mb-2 position-relative bg-black border border-white" style="min-height: 20px;">
+                        <div id="status-xp-bar" class="progress-bar bg-secondary"
+                             role="progressbar"
+                             style="width: {{ character_xp_perc }}%;"
+                             aria-valuenow="{{ character.xp }}"
+                             aria-valuemin="0"
+                             aria-valuemax="{{ character.xp_next_lvl }}"></div>
+                        <span id="status-xp-text" class="justify-content-center d-flex position-absolute w-100 text-white text-shadow">
+                            {{ xp_curr }} / {{ character.xp_next_lvl }} XP</span>
+                    </div>
+                </div>
+
+                <div class="flex-grow-1 overflow-hidden">
+                    {% include 'partials/event_log.html' %}
+                </div>
+                    {% include 'partials/event_footer.html' %}
             </div>
         </div>
     </div>
 
-    <div class="col-md-7 col-lg-8 order-4 order-md-3 d-flex">
-        <div id="region-chat-card" class="card w-100 d-flex flex-column flex-grow-1">
-            <div class="card-header">Region Chat</div>
-            <div id="region-chat-card-body" class="card-body p-0 d-flex flex-column flex-grow-1 minheight0">
-                <div class="p-2 border-bottom border-secondary">
+    <div class="col-xl-4 d-flex" style="height: 700px;">
+        <div id="status-card" class="card w-100 d-flex flex-column" hx-target="#status-card-body">
+            <div class="card-header">Status</div>
+            <div id="status-card-body" class="card-body d-flex flex-column w-100 overflow-hidden">
+
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-bold">{{ character.name }}</span>
+                    <span id="status-level" class="badge bg-secondary" >Lvl {{  character.level }}</span>
+                </div>
+
+                {% include 'partials/status_location.html' %}
+
+                {% include 'partials/player_stats.html' %}
+
+                <div class="scroll-window my-3 overflow-auto flex-grow-1 border-top border-secondary">
+                    {% include 'partials/player_log.html' %}
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="col d-flex" style="height: 400px;">
+        <div id="region-chat-card" class="card w-100 d-flex flex-column">
+            <div class="card-header flex-shrink-0">Region Chat</div>
+
+            <div id="region-chat-card-body" class="card-body p-0 d-flex flex-column overflow-hidden">
+                <div class="d-flex p-2 border-bottom border-secondary flex-shrink-0">
                     <form id="region-chat-form" style="display: contents;"
                           autocomplete="off"
                           hx-swap="none"
                           hx-on::after-request="this.reset()">
                         <div class="input-group">
                             <input type="text"
-                                   class="form-control form-control-sm bg-black text-white border-secondary"
+                                   class="flex-grow-1 bg-black text-white border border-secondary no-outline"
                                    style="--bs-secondary-color: #555;"
                                    name="region-chat-msg"
                                    placeholder="Type a message...">
@@ -43,21 +122,24 @@
                         </div>
                     </form>
                 </div>
-                <div class="row g-0 flex-grow-1 minheight0">
-                    <div class="col-9 d-flex flex-column flex-grow-1 minheight0">
-                        <div class="scroll-window overflow-auto flex-grow-1" style="height: 300px;">
 
-                            {% include 'partials/region-chat.html' %}
+                <div class="row g-0 flex-grow-1 overflow-hidden">
 
+                    <div class="col-9 h-100 d-flex flex-column">
+                        <div class="scroll-window overflow-auto h-100">
+                            {% include 'partials/region_chat.html' %}
                         </div>
                     </div>
-                    <div class="col-3 d-flex flex-column minheight0">
-                        <div class="player-list d-flex flex-column flex-grow-1 minheight0">
-                            <div class="px-2 pt-2 pb-1 small border-bottom border-secondary mb-1">
+
+                    <div class="col-3 h-100 border-start border-secondary">
+                        <div class="player-list d-flex flex-column h-100">
+                            <div class="px-2 pt-2 pb-1 small mb-1 flex-shrink-0">
                                 Online Players
                             </div>
 
-                            {% include 'partials/region-players.html' %}
+                            <div class="d-flex list-group list-group-flush flex-grow-1 overflow-auto">
+                                {% include 'partials/region_players.html' %}
+                            </div>
 
                         </div>
                     </div>
@@ -66,66 +148,5 @@
         </div>
     </div>
 
-    <div class="col-md-5 col-lg-4 order-2 d-flex" style="height: 600px;">
-        <div id="status-card" class="card w-100 d-flex flex-column" hx-target="#status-card-body">
-            <div class="card-header">Status</div>
-            <div id="status-card-body" class="card-body d-flex flex-column minheight0">
-
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="fw-bold">{{ character.name }}</span>
-                    <span id="status-level" class="badge bg-secondary" >Lvl {{  character.level }}</span>
-                </div>
-
-                <div class="progress mb-2 position-relative bg-black border border-white" style="min-height: 20px;">
-                    <div id="status-hp-bar" class="progress-bar bg-danger"
-                         role="progressbar"
-                         style="width: {{ character_health_perc }}%;"
-                         aria-valuenow="{{ character.health }}"
-                         aria-valuemin="0"
-                         aria-valuemax="{{ character.max_health }}"></div>
-                    <span id="status-hp-text" class="justify-content-center d-flex position-absolute w-100 text-white text-shadow">
-                        {{ character.health }} / {{ character.max_health }} HP</span>
-                </div>
-
-                <div class="progress mb-2 position-relative bg-black border border-white" style="min-height: 20px;">
-                    <div id="status-mp-bar" class="progress-bar bg-info"
-                         role="progressbar"
-                         style="width: {{ character_mana_perc }}%;"
-                         aria-valuenow="{{ character.mana }}"
-                         aria-valuemin="0"
-                         aria-valuemax="{{ character.max_mana }}"></div>
-                    <span id="status-mp-text" class="justify-content-center d-flex position-absolute w-100 text-white text-shadow">
-                        {{ character.mana }} / {{ character.max_mana }} MP</span>
-                </div>
-
-                <div class="progress mb-2 position-relative bg-black border border-white" style="min-height: 20px;">
-                    <div id="status-xp-bar" class="progress-bar bg-secondary"
-                         role="progressbar"
-                         style="width: {{ character_xp_perc }}%;"
-                         aria-valuenow="{{ character.xp }}"
-                         aria-valuemin="0"
-                         aria-valuemax="{{ character.xp_next_lvl }}"></div>
-                    <span id="status-xp-text" class="justify-content-center d-flex position-absolute w-100 text-white text-shadow">
-                        {{ xp_curr }} / {{ character.xp_next_lvl }} XP</span>
-                </div>
-
-                <div class="scroll-window my-3 overflow-auto flex-grow-1 minheight0">
-                    {% include 'partials/player-log.html' %}
-                </div>
-
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-5 col-lg-4 order-3 order-md-4 d-flex">
-        <div id="travel-card" class="card w-100 d-flex flex-column" hx-target="#travel-card-body">
-            <div class="card-header">Travel</div>
-            <div id="travel-card-body" class="card-body d-flex flex-column flex-grow-1 minheight0">
-
-                {% include 'partials/travel.html' %}
-
-            </div>
-        </div>
-    </div>
 </div>
 {% endblock %}

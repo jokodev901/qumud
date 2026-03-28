@@ -1,9 +1,16 @@
 {% extends base_template %}
 
 {% block content %}
-<form hx-post="{% url 'select_character' %}" hx-target="#main-content">
+<form hx-target="#main-content">
     <h2>Player Characters</h2>
-    <fieldset id="character-list" class="mb-3 mt-3">
+    <fieldset id="character-list" class="mb-3 mt-3"
+              hx-on:change="
+                        const delBtn = document.getElementById('submit-delete');
+                        const delConfirms = document.getElementById('delete-confirms');
+                        if (delBtn && delConfirms) {
+                            delBtn.disabled = false;
+                            delConfirms.classList.add('invisible');
+                        }">
             {% for character in characters %}
             <div>
                 <input type="radio"
@@ -18,7 +25,33 @@
             </div>
             {% endfor %}
     </fieldset>
-    <a class="btn btn-dark-outline" hx-get="{% url 'create_character' %}">Create New</a>
-    {% if characters %}<button type="submit" class="btn btn-dark-outline">Play</button>{% endif %}
+    <div class="d-flex flex-wrap">
+    <a class="btn btn-dark-outline me-1" hx-get="{% url 'create_character' %}">Create New</a>
+    {% if characters %}
+        <button type="submit"
+                hx-post="{% url 'select_character' %}"
+                class="btn btn-dark-outline mx-1">Play</button>
+
+        <div class="w-100 d-xl-none"></div>
+
+        <div class="d-flex ms-0 ms-xl-auto mt-2 mt-xl-0">
+            <button id="submit-delete"
+                    type="submit"
+                    class="btn btn-dark-outline me-1"
+                    hx-on:click="document.getElementById('delete-confirms').classList.toggle('invisible'); this.disabled = true;">
+                Delete
+            </button>
+            <div id="delete-confirms" class="d-flex invisible">
+                <button type="button"
+                        class="btn btn-dark-outline mx-1 text-danger border-danger"
+                        hx-post="{% url 'select_character' %}"
+                        hx-vals='{"delete": true}'>
+                    CONFIRM
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {% endif %}
 </form>
 {% endblock %}

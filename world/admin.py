@@ -131,7 +131,7 @@ class EntityAdmin(admin.ModelAdmin):
 
 @admin.register(Player)
 class PlayerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'owner', 'level', 'location', 'event')
+    list_display = ('name', 'owner', 'level', 'location', 'event', 'last_stat_update_fmt')
     list_filter = ('level',)
     raw_id_fields = ('owner', 'active', 'location', 'event', 'target')
     readonly_fields = ('public_id',)
@@ -141,12 +141,15 @@ class PlayerAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Identity', {'fields': ('public_id', 'name', 'owner', 'active')}),
-        ('State', {'fields': ('location', 'event', 'target', 'position', 'svg')}),
+        ('State', {'fields': ('location', 'event', 'target', 'position', 'svg' )}),
         ('Stats', {'fields': (('level', 'xp', 'xp_next_lvl'),
                               ('health', 'max_health', 'mana', 'max_mana'),
                               ('str', 'dex', 'int', 'vit', 'mnd'),
                               ('min_damage', 'max_damage', 'attack_range', 'speed', 'stat_points'))}),
     )
+
+    def last_stat_update_fmt(self, obj):
+        return datetime.fromtimestamp(obj.last_stat_update).strftime('%Y-%m-%d %H:%M:%S')
 
 
 @admin.register(Enemy)

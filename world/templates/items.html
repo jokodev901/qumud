@@ -1,0 +1,64 @@
+{% extends base_template %}
+
+{% block content %}
+<div class="row">
+    <div class="col">
+        <div id="equip-card" class="card h-100">
+            <div class="card-header">
+                <span>Equipment</span>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-column flex-grow-1">
+                    <div>Head</div>
+                    <div>Torso</div>
+                    <div>Gloves</div>
+                    <div>Boots</div>
+                    <div>Amulet</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row mt-3">
+    <div class="col-md-7 flex-fill">
+        <div id="inventory-card" class="card">
+            <div class="card-header">
+                <span>Inventory</span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-sm-3 d-flex justify-content-center align-items-center">
+                        <div id="equip-window" class="d-flex flex-column p-3 border border-1 border-secondary">
+                            <div class="text-info">Iron Longsword of Slaying</div>
+                            <div>Damage: 2-5</div>
+                            <div>Attack Speed: 1</div>
+                            <div>Range: 1</div>
+                            <div class="text-info">+1 dmg per enemy killed in battle</div>
+                        </div>
+                    </div>
+                    <div hx-get="/"
+                         hx-trigger="change"
+                         hx-target="#equip-window"
+                         hx-include="closest .card-body"
+                         class="col-sm-3 d-flex align-content-start flex-fill flex-wrap">
+                        {% for _ in "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" %}
+                        <div class="mx-1">
+                            <input type="radio"
+                                   id="item-public_id_goes_here{{ forloop.counter }}"
+                                   name="selected_id"
+                                   value="public_id_goes_here{{ forloop.counter }}"
+                                   class="custom-radio-radio"
+                                   {% if forloop.first %}checked{% endif %}>
+                            <label for="item-public_id_goes_here{{ forloop.counter }}" class="custom-radio-label">
+                                <span class="display-value mx-2 py-2">+{{ forloop.counter }} Sword of Filler</span>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

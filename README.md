@@ -8,11 +8,6 @@ QuMUD (Quantum MUD) is a procedurally generated multiplayer RPG with idle/autoba
 Combat events happen in real time, but are not simulated until requested (or "observed" hence the Quantum name).  Eventually the entire game will be playable via API as an alternative to the stock web app. 
 
 ---
-
-## Overview
-
-QuMUD is under active development, currently aiming to stand up a simple playable demo.
-
 ### Current Features
 - Basic user auth
 - Character creation from preset class choices
@@ -20,20 +15,19 @@ QuMUD is under active development, currently aiming to stand up a simple playabl
 - Worlds generate procgen starting region, town, dungeons, enemy templates
 - Can see other active players in region and chat with them
 - Combat event instance creation, matching with other players, and simulation of entity movement and damage
-- Players gain XP from defeated enemies and can level up via WIP stats & equipment screen
+- Players gain XP from defeated enemies and can level up
 ---
 
 ### In Progress Features
 - **Menu overhaul:** Cleanup and standardization of navbar elements and menu flow/layout
-- **Event and Enemy Management:** Combat events with multiplayer support are currently simulated with movement and damage updates, will implement actual combat logic next
+- **Event/Combat logic:** Combat events with multiplayer support are currently simulated with random movement and damage updates, will implement actual combat logic next
 ---
 
 ### What's next?
 - **True Combat:** Autobattle combat between players and enemies with realtime updates
 - **Loot:** Random loot drops, item and equipment management
 - **Expanded world:** Connected regions scaling by level
-- **REST API:** Game fully playable via API calls, allowing playability via third party frontends or CLI 
-
+- **REST API:** Game fully playable via API calls, allowing playability via third party frontends or CLI
 ---
 
 ## 🛠️ Project Stack

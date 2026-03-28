@@ -1,4 +1,3 @@
-import random
 import uuid
 import time
 import math
@@ -145,10 +144,6 @@ class Entity(BaseModel):
     def __str__(self):
         return self.name
 
-    def delete(self, *args, **kwargs):
-        Enemy.objects.filter(event=self).delete()
-        super().delete(*args, **kwargs)
-
 
 class PlayerClass(models.Model):
     name = models.CharField('Class name')
@@ -164,6 +159,7 @@ class Player(Entity):
     owner = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='user_characters')
     active = models.OneToOneField(User, null=True, blank=True, on_delete=models.CASCADE)
     last_travel = models.FloatField(default=0)
+    last_stat_update = models.FloatField(default=0)
     xp = models.IntegerField(default=0)
     xp_next_lvl = models.IntegerField(default=0)
     stat_points = models.IntegerField(default=0)
@@ -211,6 +207,7 @@ class Player(Entity):
             self.stat_points += 5
             PlayerLog.objects.create(player=self, htclass="", log=f"Leveled up to {self.level}!")
             self.xp_next_lvl = self.level**3 + 9*self.level**2
+            self.last_stat_update = time.time()
 
         self.save()
 
@@ -271,6 +268,7 @@ class Player(Entity):
 
         self.speed = 1 + math.floor(0.025 * self.dex + 0.005 * self.str)
 
+        self.last_stat_update = time.time()
         self.save()
 
         return self

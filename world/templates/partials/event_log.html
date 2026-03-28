@@ -1,0 +1,31 @@
+<div id="event-log-swap"
+    class="scroll-window overflow-auto h-100"
+    {% if update %}
+        {% if event_log_swap == "append" %} hx-swap-oob="afterbegin"
+        {% elif event_log_swap == "replace" %} hx-swap-oob="true" {% endif %}
+    {% endif %}>
+    {% for log in event.log %}
+    <div class="log-wrapper"><div class="log-content"><div class="{{ log.htclass }}">{{ log.log }}</div></div></div>
+    {% endfor %}
+
+    {% if travel.current_location in travel.towns %}
+        <h6 class="mb-1">Dungeons</h6>
+        <div class="d-flex flex-wrap gap-2">
+        {% for dungeon in travel.dungeons %}
+            <a class="btn btn-sm btn-dark-outline"
+               hx-swap="none"
+               hx-post='{% url "travel" %}'
+               hx-vals='{"public_id": "{{ dungeon.public_id }}"}'>
+               {{ dungeon.name }} (lvl {{ dungeon.level }})
+            </a>
+        {% endfor %}
+        </div>
+        <hr>
+        <h6 class="my-1">Players</h6>
+        <div>
+            {% for player in event.entities %}
+                <span>{{ player.name }}</span>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>

@@ -12,37 +12,49 @@
     <script src="{% static 'js/app.js' %}" defer></script>
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-    <div class="d-flex flex-column vh-100">
-        <nav class="navbar navbar-expand-sm navbar-dark navbar-custom">
+    <div class="d-flex flex-column vh-100 vw-100">
+        <nav class="navbar navbar-expand-sm navbar-dark navbar-custom"
+             hx-swap="innerHTML show:window:top"
+             hx-boost="true"
+             hx-target="#main-content">
             <div class="container">
-            <span class="navbar-brand">QuMUD</span>
+            <a class="navbar-brand" href="{% url 'home' %}">QuMUD</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
-                <div class="navbar-collapse collapse" id="navbar" hx-boost="true" hx-target="#main-content">
+                <div id="navbar" class="navbar-collapse collapse">
                     <ul class="nav navbar-nav me-auto">
                         {% if user.is_authenticated %}
                             <li class="nav-item">
-                                <a class="nav-link" href="{% url 'profile' %}">Profile</a>
+                                <a class="nav-link"
+                                   data-bs-toggle="collapse" data-bs-target=".navbar-collapse.show"
+                                   hx-swap="innerHTML show:window:top"
+                                   href="{% url 'characters' %}">Characters</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="{% url 'home' %}">Characters</a>
+                                <a class="nav-link"
+                                   data-bs-toggle="collapse" data-bs-target=".navbar-collapse.show"
+                                   hx-swap="innerHTML show:window:top"
+                                   href="{% url 'world' %}">World</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="{% url 'character' %}">Character</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{% url 'world' %}">World</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{% url 'map' %}">Map</a>
+                                <a class="nav-link"
+                                   data-bs-toggle="collapse" data-bs-target=".navbar-collapse.show"
+                                   hx-swap="innerHTML show:window:top"
+                                   href="{% url 'items' %}">Items</a>
                             </li>
                         {% else %}
                             <li class="nav-item">
-                                <a class="nav-link" href="{% url 'login' %}">Login</a>
+                                <a class="nav-link"
+                                   data-bs-toggle="collapse" data-bs-target=".navbar-collapse.show"
+                                   hx-swap="innerHTML show:window:top"
+                                   href="{% url 'login' %}">Login</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="{% url 'register' %}">Register</a>
+                                <a class="nav-link"
+                                   data-bs-toggle="collapse" data-bs-target=".navbar-collapse.show"
+                                   hx-swap="innerHTML show:window:top"
+                                   href="{% url 'register' %}">Register</a>
                             </li>
                         {% endif %}
                     </ul> {% if user.is_authenticated %}
@@ -54,7 +66,7 @@
                 </div>
             </div>
         </nav>
-        <main id="main-content" role="main" class="container py-3 h-100">
+        <main id="main-content" role="main" class="container py-3 h-100 w-100">
             {% block content %}{% endblock %}
         </main>
     </div>
