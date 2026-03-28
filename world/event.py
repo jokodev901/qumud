@@ -106,6 +106,14 @@ def get_or_create_event(location: Location) -> Event | None:
 
 def process_ticks(enemy_count: int, event_lock: Event, killed_entities: list[Any], newlogs: list[Any], player: Player,
                   player_count: int, player_logs: list[Any], ticks: int | Any):
+
+    # TODO debug log
+    player_logs.append(
+        PlayerLog(player=player,
+                  htclass='text-white',
+                  log=f'Processing {ticks} ticks...')
+    )
+
     for tick in range(ticks):
         e_positions = []
         p_positions = []
@@ -144,6 +152,11 @@ def process_ticks(enemy_count: int, event_lock: Event, killed_entities: list[Any
                         PlayerLog(player=player,
                                   htclass='text-danger',
                                   log=f'YOU DIED')
+                    )
+                    player_logs.append(
+                        PlayerLog(player=player,
+                                  htclass='text-white',
+                                  log=f'Respawning in town...')
                     )
 
                     player_count -= 1

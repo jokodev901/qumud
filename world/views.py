@@ -1,7 +1,6 @@
 import json
 import time
 import re
-import math
 
 from django.db.models import QuerySet
 from django.views.generic import TemplateView, View
@@ -606,8 +605,6 @@ class Travel(BaseView):
                         event_players = player.event.entity_set.all().filter(type='P').exclude(pk=player.id)
                         if not event_players:
                             Event.objects.all().filter(id=player.event_id).update(active=False)
-                            # player.event.active = False
-                            # player.event.save(update_fields=["active", ])
 
                         player.event = None
                         player.event_joined = time.time()

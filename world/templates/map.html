@@ -2,17 +2,20 @@
 
 {% block content %}
 <!--<div hx-get="{% url 'home' %}" hx-trigger="every 1s" hx-vals='{"trigger": "update"}' hx-swap="none"></div>-->
-<button hx-get="{% url 'home' %}" hx-vals='{"trigger": "update"}' hx-swap="none">DEBUG</button>
 
-<input type="radio" name="pollToggle" id="pollOn">
-<label for="pollOn">Updates on</label>
-<input type="radio" name="pollToggle" id="pollOff" checked>
-<label for="pollOff">Updates off</label>
+<div id="debug" class="ad-none">
+    <button hx-get="{% url 'home' %}" hx-vals='{"trigger": "update"}' hx-swap="none">UPDATE</button>
 
-<div hx-get="{% url 'home' %}"
-     hx-trigger="every 1s [document.getElementById('pollOn').checked]"
-     hx-vals='{"trigger": "update"}'
-     hx-swap="none">
+    <input type="radio" name="pollToggle" id="pollOn">
+    <label for="pollOn">Updates on</label>
+    <input type="radio" name="pollToggle" id="pollOff" checked>
+    <label for="pollOff">Updates off</label>
+
+    <div hx-get="{% url 'home' %}"
+         hx-trigger="every 1s [document.getElementById('pollOn').checked]"
+         hx-vals='{"trigger": "update"}'
+         hx-swap="none">
+    </div>
 </div>
 
 <div class="row g-3">
