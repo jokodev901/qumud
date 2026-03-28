@@ -4,9 +4,9 @@
 <!--<div hx-get="{% url 'home' %}" hx-trigger="every 1s" hx-vals='{"trigger": "update"}' hx-swap="none"></div>-->
 <button hx-get="{% url 'home' %}" hx-vals='{"trigger": "update"}' hx-swap="none">DEBUG</button>
 
-<input type="radio" name="pollToggle" id="pollOn" checked>
+<input type="radio" name="pollToggle" id="pollOn">
 <label for="pollOn">Updates on</label>
-<input type="radio" name="pollToggle" id="pollOff">
+<input type="radio" name="pollToggle" id="pollOff" checked>
 <label for="pollOff">Updates off</label>
 
 <div hx-get="{% url 'home' %}"
@@ -109,7 +109,7 @@
                           hx-on::after-request="this.reset()">
                         <div class="input-group">
                             <input type="text"
-                                   class="flex-grow-1 bg-black text-white border-secondary no-outline"
+                                   class="flex-grow-1 bg-black text-white border border-secondary no-outline"
                                    style="--bs-secondary-color: #555;"
                                    name="region-chat-msg"
                                    placeholder="Type a message...">

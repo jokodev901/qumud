@@ -18,7 +18,7 @@ from rest_framework.authtoken.models import Token
 
 from core.utils import generators
 from authentication.models import User
-from .models import (World, Region, Location, RegionChatMessage, Player, PlayerLog, PlayerClass)
+from .models import (World, Region, Location, RegionChatMessage, Player, PlayerLog, PlayerClass, Event)
 from .forms import CharacterCreateForm, WorldCreationForm
 from .event import process_dungeon_event, process_town_event, get_or_create_event
 from .enemy import generate_enemy_templates
@@ -172,7 +172,7 @@ class BaseView(View):
                 event_data = process_dungeon_event(player, event, full)
 
         elif location.type == 'T' and event:
-            event_data = process_town_event(player, event, full)
+            event_data = process_town_event(player, event, full, joined)
 
         return event_data, joined
 
@@ -283,7 +283,7 @@ class SelectCharacter(BaseView):
 
         else:
             with transaction.atomic():
-                Player.objects.filter(active_id=user.id).update(active=None)
+                Player.objects.filter(active_id=user.id).update(active=None, event=None, event_joined=0)
                 update_count = Player.objects.filter(owner_id=user.id, public_id=selected).update(active=user)
 
                 if update_count == 0:
@@ -605,8 +605,9 @@ class Travel(BaseView):
                         # If we are the last player to leave an event, then set it to inactive
                         event_players = player.event.entity_set.all().filter(type='P').exclude(pk=player.id)
                         if not event_players:
-                            player.event.active = False
-                            player.event.save(update_fields=["active", ])
+                            Event.objects.all().filter(id=player.event_id).update(active=False)
+                            # player.event.active = False
+                            # player.event.save(update_fields=["active", ])
 
                         player.event = None
                         player.event_joined = time.time()

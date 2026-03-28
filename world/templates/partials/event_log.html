@@ -9,7 +9,7 @@
     {% endfor %}
 
     {% if travel.current_location in travel.towns %}
-        <h6 class="small mb-2">Dungeons</h6>
+        <h6 class="mb-1">Dungeons</h6>
         <div class="d-flex flex-wrap gap-2">
         {% for dungeon in travel.dungeons %}
             <a class="btn btn-sm btn-dark-outline"
@@ -19,6 +19,13 @@
                {{ dungeon.name }} (lvl {{ dungeon.level }})
             </a>
         {% endfor %}
+        </div>
+        <hr>
+        <h6 class="my-1">Players</h6>
+        <div>
+            {% for player in event.entities %}
+                <span>{{ player.name }}</span>
+            {% endfor %}
         </div>
     {% endif %}
 </div>

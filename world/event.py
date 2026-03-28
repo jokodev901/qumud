@@ -19,7 +19,7 @@ def get_or_create_event(location: Location) -> Event | None:
         # Find existing events with less than player_limit number of players
         prefetch_list = []
 
-        player_count = Count("entity", filter=Q(entity__type='P'))
+        player_count = Count("entity", filter=Q(entity__type='P', active__isnull=False))
         event_prefetch = Prefetch('event_set',
                                   queryset=Event.objects.all()
                                   .annotate(player_count=player_count)
@@ -112,6 +112,7 @@ def process_ticks(enemy_count: int, event_lock: Event, killed_entities: list[Any
 
         for entity in event_lock.entities[:]:
             if entity.type == 'E':
+                # Entity combat logic goes here
                 dmg = random.choice(range(1, 5))
                 entity.health -= dmg
 
@@ -122,6 +123,7 @@ def process_ticks(enemy_count: int, event_lock: Event, killed_entities: list[Any
                 )
 
             elif entity.type == 'P':
+                # Entity combat logic goes here
                 entity.health -= 1
 
                 newlogs.append(
@@ -203,14 +205,35 @@ def process_ticks(enemy_count: int, event_lock: Event, killed_entities: list[Any
 
             break
 
-        elif player_count == 0:
+        if player_count == 0:
             event_lock.active = False
             pass
 
 
-def process_town_event(player: Player, event: Event, full: bool) -> dict | None:
-    # Placeholder town event processing
-    players = Player.objects.all().filter(event=event).exclude(pk=player.id)
+def process_town_event(playerp: Player, event: Event, full: bool, joined: bool) -> dict | None:
+    players = Player.objects.all().filter(event=event, active__isnull=False, owner__last_refresh__gte=time.time() - 600)
+    player_positions = []
+
+    if joined:
+        for player in players:
+            if player.id == playerp.id:
+                position = 50 + random.choice(range(-10, 10))
+                player.position = position
+            else:
+                position = player.position
+
+            pos_round = 5 * round(position / 5)
+            player_positions.append(pos_round)
+            pos_count = player_positions.count(pos_round)
+
+            flip = 1
+            if pos_count % 2 == 0:
+                flip = -1
+
+            player.top = utils.clamp(50 + (math.floor(pos_count / 2) * 10 * flip), 5, 95)
+            player.left = pos_round
+
+        Player.objects.bulk_update(players, ['position', 'left', 'top'])
 
     return {'log': [], 'entities': players}
 
