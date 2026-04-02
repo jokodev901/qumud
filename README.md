@@ -18,9 +18,9 @@ Combat events happen in real time, but are not simulated until requested (or "ob
 - Players gain XP from defeated enemies and can level up
 ---
 
-### In Progress Features
-- **Menu overhaul:** Cleanup and standardization of navbar elements and menu flow/layout
+### In Progress
 - **Event/Combat logic:** Combat events with multiplayer support are currently simulated with random movement and damage updates, will implement actual combat logic next
+- **Updated Auth:** Overhaul registration, login, logout form handling and style
 ---
 
 ### What's next?
