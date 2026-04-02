@@ -68,7 +68,7 @@ class Event(BaseModel):
     public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     size = models.IntegerField(default=100)
     active = models.BooleanField(default=True, db_index=True)
-    ended = models.FloatField(default=0)
+    ended = models.FloatField(default=None, null=True, blank=True)
     last_update = models.FloatField(default=0)
 
     location = models.ForeignKey(Location, on_delete=models.CASCADE)

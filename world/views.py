@@ -24,47 +24,6 @@ from .enemy import generate_enemy_templates
 
 
 class BaseView(View):
-    def prep_user(self, related: list = ()) -> User | None:
-        '''
-        Avoids duplicate user queries each time authentication is checked and prepares related data
-        '''
-
-        # Extract user id from session data
-        user_id = self.request.session.get('_auth_user_id')
-
-        if not user_id:
-            return None
-
-        user = (
-            User.objects
-            .select_related(*related)
-            .get(id=user_id)
-        )
-
-        return user
-
-    def prep_player(self, related: list = ()) -> tuple[Player | None, bool]:
-        '''
-        Avoids duplicate user queries each time authentication is checked and prepares related data
-        '''
-
-        # Extract user id from session data
-        user_id = self.request.session.get('_auth_user_id')
-
-        if not user_id:
-            return None, False
-
-        try:
-            player = (
-                Player.objects
-                .select_related(*related)
-                .get(active_id=user_id)
-            )
-        except Player.DoesNotExist:
-            return None, True
-
-        return player, True
-
     @staticmethod
     def render_partials(request, partials, str_partials, headers, context):
         """
@@ -174,6 +133,47 @@ class BaseView(View):
             event_data = process_town_event(player, event, full, joined)
 
         return event_data, joined
+
+    def prep_user(self, related: list = ()) -> User | None:
+        '''
+        Avoids duplicate user queries each time authentication is checked and prepares related data
+        '''
+
+        # Extract user id from session data
+        user_id = self.request.session.get('_auth_user_id')
+
+        if not user_id:
+            return None
+
+        user = (
+            User.objects
+            .select_related(*related)
+            .get(id=user_id)
+        )
+
+        return user
+
+    def prep_player(self, related: list = ()) -> tuple[Player | None, bool]:
+        '''
+        Avoids duplicate user queries each time authentication is checked and prepares related data
+        '''
+
+        # Extract user id from session data
+        user_id = self.request.session.get('_auth_user_id')
+
+        if not user_id:
+            return None, False
+
+        try:
+            player = (
+                Player.objects
+                .select_related(*related)
+                .get(active_id=user_id)
+            )
+        except Player.DoesNotExist:
+            return None, True
+
+        return player, True
 
 
 class UserProfileView(LoginRequiredMixin, TemplateView):
@@ -591,35 +591,44 @@ class Travel(BaseView):
         if not player:
             return redirect('characters')
 
-        context = {'update': True, 'event_log_swap': 'replace'}
-        update_fields = []
-
+        context = {'update': True, 'event_log_swap': 'replace', 'player_log_swap': 'append'}
+        context['status'] = self.get_player_logs(player=player)
         selected_location = Location.objects.select_related('region').get(public_id=request.POST['public_id'])
 
         if selected_location != player.location:
             if selected_location.region == player.location.region:
                 with transaction.atomic():
-                    # Remove event since we have left the location
                     if player.event:
+                        # Process any remaining event ticks before changing location
+                        self.get_event_data(player=player, full=True)
+                        self.partials.append('partials/player_log.html')
+
                         # If we are the last player to leave an event, then set it to inactive
                         event_players = player.event.entity_set.all().filter(type='P').exclude(pk=player.id)
                         if not event_players:
                             Event.objects.all().filter(id=player.event_id).update(active=False)
 
-                        player.event = None
-                        player.event_joined = time.time()
-                        update_fields.append('event')
-                        update_fields.append('event_joined')
+                    # Update to new location if we weren't force-traveled via event outcome (death and respawn)
+                    if player.last_travel < player.owner.last_refresh:
+                        Player.objects.all().filter(id=player.id).update(location=selected_location)
 
-                    player.location = selected_location
-                    update_fields.append('location')
-
-                    player.save(update_fields=update_fields)
-
-                # Refetch player object after updating location
+                # Refetch player object after updates
                 player = Player.objects.select_related('location__region__world', 'event', 'owner').get(pk=player.id)
-
-                # Update and get event data
+                trigger_data = {
+                    'updateStatus': {
+                        'hp_perc': player.health_perc,
+                        'hp_curr': player.health,
+                        'hp_max': player.max_health,
+                        'mp_perc': player.mana_perc,
+                        'mp_curr': player.mana,
+                        'mp_max': player.max_mana,
+                        'xp_perc': player.xp_perc,
+                        'xp_curr': player.xp,
+                        'xp_max': player.xp_next_lvl,
+                        'lvl': player.level
+                    }
+                }
+                headers = {'HX-Trigger': json.dumps(trigger_data)}
                 context['event'], _ = self.get_event_data(player=player, full=True)
                 context['travel'] = self.get_travel_data(player=player)
                 event_header_partial = """
@@ -635,8 +644,7 @@ class Travel(BaseView):
                 player.owner.last_refresh = time.time()
                 player.owner.save(update_fields=['last_refresh'])
 
-                return self.render_partials(request, self.partials, [event_header_partial], {},
-                                            context)
+                return self.render_partials(request, self.partials, [event_header_partial], headers,  context)
 
             return HttpResponse('Invalid selection', status=400)
 

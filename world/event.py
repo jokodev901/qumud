@@ -23,7 +23,7 @@ def get_or_create_event(location: Location) -> Event | None:
         event_prefetch = Prefetch('event_set',
                                   queryset=Event.objects.all()
                                   .annotate(player_count=player_count)
-                                  .filter(player_count__lt=location.max_players, ended=0))
+                                  .filter(player_count__lt=location.max_players, ended__isnull=True))
         prefetch_list.append(event_prefetch)
 
         if location.type == 'D':
@@ -107,7 +107,7 @@ def get_or_create_event(location: Location) -> Event | None:
 def process_ticks(enemy_count: int, event_lock: Event, killed_entities: list[Any], newlogs: list[Any], player: Player,
                   player_count: int, player_logs: list[Any], ticks: int | Any):
 
-    # TODO debug log
+    # DEBUG
     player_logs.append(
         PlayerLog(player=player,
                   htclass='text-white',
@@ -223,17 +223,17 @@ def process_ticks(enemy_count: int, event_lock: Event, killed_entities: list[Any
             pass
 
 
-def process_town_event(playerp: Player, event: Event, full: bool, joined: bool) -> dict | None:
+def process_town_event(player: Player, event: Event, full: bool, joined: bool) -> dict | None:
     players = Player.objects.all().filter(event=event, active__isnull=False, owner__last_refresh__gte=time.time() - 600)
     player_positions = []
 
     if joined:
-        for player in players:
-            if player.id == playerp.id:
+        for p in players:
+            if p.id == player.id:
                 position = 50 + random.choice(range(-10, 10))
-                player.position = position
+                p.position = position
             else:
-                position = player.position
+                position = p.position
 
             pos_round = 5 * round(position / 5)
             player_positions.append(pos_round)
@@ -243,8 +243,8 @@ def process_town_event(playerp: Player, event: Event, full: bool, joined: bool) 
             if pos_count % 2 == 0:
                 flip = -1
 
-            player.top = utils.clamp(50 + (math.floor(pos_count / 2) * 10 * flip), 5, 95)
-            player.left = pos_round
+            p.top = utils.clamp(50 + (math.floor(pos_count / 2) * 10 * flip), 5, 95)
+            p.left = pos_round
 
         Player.objects.bulk_update(players, ['position', 'left', 'top'])
 
@@ -280,6 +280,13 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
                       .order_by('-created_at'))
         player_logs = []
 
+        # DEBUG
+        player_logs.append(
+            PlayerLog(player=player,
+                      htclass='text-white',
+                      log=f'Event last update delta: {delta}')
+        )
+
         player_count = 0
         enemy_count = 0
 
@@ -291,14 +298,16 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
 
         # Consider event paused while inactive (due to no players present)
         # Resume with fresh update time when a player joins again
-        if not event_lock.active and enemy_count > 0:
-            Event.objects.filter(pk=event_lock.pk).update(last_update=time.time(), active=True)
+        if not event_lock.active:
+            event_lock.active = True
+            event_lock.last_update = time.time()
             ticks = 0
+            event_lock.save(update_fields=['last_update', 'active'])
 
         # If no enemies are left then event is over, update location last_event and set ended
         if enemy_count == 0:
             Location.objects.filter(pk=event_lock.location_id).update(last_event=time.time())
-            Event.objects.filter(pk=event_lock.pk).update(ended=time.time(), active=False)
+            Event.objects.filter(pk=event_lock.pk).update(ended=time.time())
             Player.objects.filter(pk=player.pk).update(event=None, event_joined=0)
 
             return {'log': event_logs, 'entities': []}
@@ -316,17 +325,16 @@ def process_dungeon_event(player: Player, event: Event, full: bool, debug: bool 
                               .filter(created_at__gte=player.owner.last_refresh, event=event)
                               .order_by('-created_at'))
 
-            # Process player logs
-            if player_logs:
-                PlayerLog.objects.bulk_create(player_logs)
-
             event_lock.last_update = time.time() - offset
 
             if debug:
                 event_lock.last_update = time.time()
 
-            event_lock.save(update_fields=['last_update', 'active'])
             Entity.objects.bulk_update(killed_entities + event_lock.entities,
                                        ['health', 'dead', 'position', 'left', 'top'])
+            event_lock.save(update_fields=['last_update', 'active'])
+
+        if player_logs:
+            PlayerLog.objects.bulk_create(player_logs)
 
     return {'log': event_logs, 'entities': event_lock.entities}
