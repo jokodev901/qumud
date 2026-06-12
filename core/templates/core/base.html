@@ -48,17 +48,17 @@
                                 <a class="nav-link"
                                    data-bs-toggle="collapse" data-bs-target=".navbar-collapse.show"
                                    hx-swap="innerHTML show:window:top"
-                                   href="{% url 'login' %}">Login</a>
+                                   href="{% url 'account_login' %}">Login</a>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link"
                                    data-bs-toggle="collapse" data-bs-target=".navbar-collapse.show"
                                    hx-swap="innerHTML show:window:top"
-                                   href="{% url 'register' %}">Register</a>
+                                   href="{% url 'account_signup' %}">Register</a>
                             </li>
                         {% endif %}
                     </ul> {% if user.is_authenticated %}
-                        <form class="form-inline my-2 my-lg-0" action="{% url 'logout' %}" method="post" hx-boost="false">
+                        <form class="form-inline my-2 my-lg-0" action="{% url 'account_logout' %}" method="post" hx-boost="false">
                             {% csrf_token %}
                             <button class="btn btn-link nav-link" type="submit">Logout</button>
                         </form>
