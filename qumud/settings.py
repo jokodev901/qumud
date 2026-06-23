@@ -194,3 +194,6 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
+
+# Django Allauth settings
+ACCOUNT_SIGNUP_FIELDS = ['username*', 'password1*', 'password2*']

@@ -202,7 +202,7 @@ class Stats(BaseView):
         player, user_auth = self.prep_player()
 
         if not user_auth:
-            return redirect('login')
+            return redirect('account_login')
 
         if not player:
             return redirect('characters')
@@ -215,7 +215,7 @@ class Stats(BaseView):
         player, user_auth = self.prep_player()
 
         if not user_auth:
-            return redirect('login')
+            return redirect('account_login')
 
         if not player:
             return redirect('characters')
@@ -242,7 +242,7 @@ class Items(BaseView):
         player, user_auth = self.prep_player()
 
         if not user_auth:
-            return redirect('login')
+            return redirect('account_login')
 
         if not player:
             return redirect('characters')
@@ -258,7 +258,7 @@ class GetPlayerCharacters(BaseView):
     def get(self, request):
         user = self.prep_user()
         if not user:
-            return redirect('login')
+            return redirect('account_login')
 
         characters = Player.objects.filter(owner=user).order_by('id')
         context = {'characters': characters}
@@ -270,7 +270,7 @@ class SelectCharacter(BaseView):
     def post(self, request):
         user = self.prep_user()
         if not user:
-            return redirect('login')
+            return redirect('account_login')
 
         delete = request.POST.get('delete')
         selected = request.POST.get('selected_id')
@@ -307,7 +307,7 @@ class CreateCharacter(BaseView):
     def get(self, request):
         user = self.prep_user()
         if not user:
-            return redirect('login')
+            return redirect('account_login')
 
         classes = self.get_player_classes()
         form = CharacterCreateForm()
@@ -317,7 +317,7 @@ class CreateCharacter(BaseView):
     def post(self, request):
         user = self.prep_user()
         if not user:
-            return redirect('login')
+            return redirect('account_login')
 
         form = CharacterCreateForm(request.POST)
 
@@ -352,7 +352,7 @@ class SelectWorld(BaseView):
         player, user_auth = self.prep_player(['location__region__world'])
 
         if not user_auth:
-            return redirect('login')
+            return redirect('account_login')
 
         if not player:
             return redirect('characters')
@@ -369,7 +369,7 @@ class SelectWorld(BaseView):
         player, user_auth = self.prep_player(['location'])
 
         if not user_auth:
-            return redirect('login')
+            return redirect('account_login')
 
         if not player:
             return redirect('characters')
@@ -428,7 +428,7 @@ class Map(BaseView):
         player, user_auth = self.prep_player(['location__region__world', 'event', 'owner'])
 
         if not user_auth:
-            return redirect('login')
+            return redirect('account_login')
 
         if not player:
             return redirect('characters')
@@ -586,7 +586,7 @@ class Travel(BaseView):
         player, user_auth = self.prep_player(['location__region', 'event',])
 
         if not user_auth:
-            return redirect('login')
+            return redirect('account_login')
 
         if not player:
             return redirect('characters')
@@ -658,7 +658,7 @@ class RegionChat(BaseView):
         player, user_auth = self.prep_player(['location__region', 'owner'])
 
         if not user_auth:
-            return redirect('login')
+            return redirect('account_login')
 
         if not player:
             return redirect('characters')

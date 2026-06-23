@@ -5,7 +5,7 @@ from django.contrib.auth import login
 from django.conf import settings
 
 from allauth.account.views import (LoginView as AllauthLoginView, SignupView as AllauthSignupView,
-                                   LogoutView as AllauthLogoutView)
+                                   LogoutView as AllauthLogoutView, PasswordResetView as AllauthPasswordResetView)
 from .forms import CustomUserCreationForm
 
 
@@ -33,3 +33,6 @@ class LoginView(AllauthLoginView):
 
 class LogoutView(AllauthLogoutView):
     template_name = f"account/allauth_logout.html"
+
+class PasswordResetView(AllauthPasswordResetView):
+    template_name = f"account/allauth_password_reset.html"

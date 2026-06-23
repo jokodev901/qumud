@@ -8,7 +8,7 @@ from world import urls as world_urls
 urlpatterns = [
     path('favicon.ico', RedirectView.as_view(url=staticfiles_storage.url('img/favicon.svg'))),
     path('admin/', admin.site.urls),
-    path('accounts/', include('allauth.urls')),
+    # path('accounts/', include('allauth.urls')),
     path('auth/', include(auth_urls)),
     path('', include(world_urls)),
 ]
